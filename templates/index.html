@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Policy Protector AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">MyVakeel</h1>
+            <p>Your personal guide to understanding legal documents.</p>
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This tool is for informational purposes only and is not a substitute for legal advice from a qualified professional.
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="file-analysis-section">
+                <h2>Document Analysis</h2>
+                <p>Upload your insurance policy or other legal document to get a simplified summary and risk analysis. 
+
+[Image of a document with a magnifying glass]
+</p>
+                <div class="file-upload-form">
+                    <input type="file" id="policy-file" accept=".pdf,image/*">
+                    <button id="analyze-button" disabled>Analyze Document</button>
+                    <div id="loading-spinner" class="loading-spinner"></div>
+                </div>
+                <div id="result-area" class="results" style="display:none;">
+                    <h3>AI Analysis:</h3>
+                    <div id="result-content"></div>
+                </div>
+            </section>
+            
+            <section class="chatbot-section">
+                <h2>Legal Chatbot</h2>
+                <div class="chat-window" id="chat-window">
+                    <div class="chat-message bot-message">
+                        <p>Hello! I'm MyVakeel. How can I help you understand your legal documents today?</p>
+                    </div>
+                </div>
+                <div class="chat-input-form">
+                    <input type="text" id="chat-input" placeholder="Ask a question about a term or clause...">
+                    <button id="send-chat-button">Send</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Use global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId;
+        
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase initialized. User ID:", userId);
+                        document.getElementById('analyze-button').disabled = false;
+                    } else {
+                        console.log("No user is signed in. Signing in anonymously...");
+                        await signInAnonymously(auth);
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                document.getElementById('result-content').innerHTML = `Error: Firebase failed to initialize. ${error.message}`;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+
+        const fileInput = document.getElementById('policy-file');
+        const analyzeButton = document.getElementById('analyze-button');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const resultArea = document.getElementById('result-area');
+        const resultContent = document.getElementById('result-content');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatButton = document.getElementById('send-chat-button');
+        const chatWindow = document.getElementById('chat-window');
+
+        analyzeButton.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+
+            if (!file) {
+                resultContent.innerHTML = 'Please select a file to analyze.';
+                resultArea.style.display = 'block';
+                return;
+            }
+
+            loadingSpinner.style.display = 'block';
+            analyzeButton.disabled = true;
+            resultArea.style.display = 'block';
+            resultContent.innerHTML = '<p class="text-center">Uploading and analyzing your document...</p>';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': userId || 'anonymous'
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultContent.innerHTML = `Error: ${data.error}`;
+                } else if (response.ok) {
+                    if (data.result) {
+                        const aiResponse = data.result;
+                        
+                        let formattedHtml = '';
+                        
+                        if (aiResponse.summary && Array.isArray(aiResponse.summary)) {
+                            formattedHtml += `<div class="summary card">
+                                              <h3>Summary:</h3>
+                                              <ul>`;
+                            aiResponse.summary.forEach(item => {
+                                formattedHtml += `<li>${item}</li>`;
+                            });
+                            formattedHtml += `</ul></div>`;
+                        }
+
+                        if (aiResponse.mind_map) {
+                            const mindMapLines = aiResponse.mind_map.split('\\n').map(line => {
+                                const indent = line.match(/^\s*/)[0].length / 2;
+                                return `<span style="padding-left:${indent}em;">${line.trim()}</span><br>`;
+                            }).join('');
+
+                            formattedHtml += `<div class="mind-map card">
+                                              <h3>Visual Summary:</h3>
+                                              <div class="mind-map-display">
+                                                ${mindMapLines}
+                                              </div>
+                                              </div>`;
+                        }
+
+                        if (aiResponse.risks && Array.isArray(aiResponse.risks)) {
+                            formattedHtml += `<div class="risks card">
+                                              <h3>Identified Risks:</h3>
+                                              <ul>`;
+                            aiResponse.risks.forEach(risk => {
+                                formattedHtml += `<li>
+                                                  <strong>Risk:</strong> ${risk.simplified_explanation}
+                                                  <span class="risk-original">Original text: "${risk.original_text}"</span>
+                                              </li>`;
+                            });
+                            formattedHtml += `</ul></div>`;
+                        }
+
+                        if (aiResponse.tip) {
+                            formattedHtml += `<div class="tip card">
+                                              <h3>Did you know?</h3>
+                                              <p>${aiResponse.tip}</p>
+                                              </div>`;
+                        }
+                        
+                        resultContent.innerHTML = formattedHtml;
+                    } else {
+                        resultContent.innerHTML = `<h4>AI Response (Raw):</h4><pre class="raw-response">${JSON.stringify(data, null, 2)}</pre>`;
+                    }
+                } else {
+                    resultContent.innerHTML = `Error: ${data.error || 'Something went wrong.'}`;
+                }
+            } catch (error) {
+                resultContent.innerHTML = `An error occurred while processing the response: ${error.message}`;
+            } finally {
+                loadingSpinner.style.display = 'none';
+                analyzeButton.disabled = false;
+            }
+        });
+
+        sendChatButton.addEventListener('click', async () => {
+            const query = chatInput.value.trim();
+            if (query === '') return;
+
+            // Display user message
+            chatWindow.innerHTML += `<div class="chat-message user-message"><p>${query}</p></div>`;
+            chatInput.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            // Display loading message
+            chatWindow.innerHTML += `<div class="chat-message bot-message"><p class="loading">MyVakeel is thinking...</p></div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            sendChatButton.disabled = true;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': userId || 'anonymous'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+                const lastBotMessage = chatWindow.querySelector('.bot-message:last-child p');
+                
+                if (data.error) {
+                    lastBotMessage.innerHTML = `Error: ${data.error}`;
+                } else if (response.ok) {
+                    lastBotMessage.innerHTML = data.response;
+                } else {
+                    lastBotMessage.innerHTML = 'Something went wrong.';
+                }
+            } catch (error) {
+                const lastBotMessage = chatWindow.querySelector('.bot-message:last-child p');
+                lastBotMessage.innerHTML = `An error occurred: ${error.message}`;
+            } finally {
+                sendChatButton.disabled = false;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+        });
+        
+    </script>
+</body>
+</html>
