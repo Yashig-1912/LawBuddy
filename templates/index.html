@@ -3,414 +3,1644 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyVakeel - Admin Panel</title>
+    <title>MyVakeel - AI Legal Document Assistant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body style="background: linear-gradient(135deg, #2d3748, #4a5568);">
-    <div class="admin-container">
-        <div class="admin-header">
-            <h1>🛠️ MyVakeel Admin Panel</h1>
-            <p>Monitor your application and database activity</p>
-            <div style="margin-top: 1rem;">
-                <a href="/" class="btn" style="color: white; text-decoration: none; background: rgba(255,255,255,0.2);">← Back to App</a>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>MyVakeel</h1>
+            <p>Your AI-powered legal document assistant with voice support</p>
+            <div id="user-status"></div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- File Upload Section -->
+            <div class="card">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    Document Analysis
+                </h2>
+                <p>Upload your legal document for AI-powered analysis with voice support</p>
+                
+                <div class="file-upload" id="file-upload-area">
+                    <input type="file" id="file-input" accept=".pdf,image/*,text/*" style="display: none;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#cbd5e0">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    <p>Click to upload or drag & drop</p>
+                    <small>PDF, Images, or Text files (Max 10MB)</small>
+                </div>
+                
+                <!-- Progress Container -->
+                <div class="progress-container" id="upload-progress" style="display: none;">
+                    <div class="progress-header">
+                        <div class="progress-title">Processing Document</div>
+                        <div class="progress-percentage" id="progress-percent">0%</div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-steps" id="progress-steps">
+                        <div class="progress-step" id="step-upload">
+                            <div class="step-icon pending">1</div>
+                            <span>Uploading file to storage</span>
+                        </div>
+                        <div class="progress-step" id="step-extract">
+                            <div class="step-icon pending">2</div>
+                            <span>Extracting document content</span>
+                        </div>
+                        <div class="progress-step" id="step-analyze">
+                            <div class="step-icon pending">3</div>
+                            <span>AI analysis in progress</span>
+                        </div>
+                        <div class="progress-step" id="step-complete">
+                            <div class="step-icon pending">4</div>
+                            <span>Generating insights and summary</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" id="analyze-file-btn" style="width: 100%; margin-top: 1rem;" disabled>
+                    Analyze Document
+                </button>
+                
+                <div class="loading-spinner" id="file-loading"></div>
+            </div>
+
+            <!-- Text Analysis Section -->
+            <div class="card">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"/>
+                    </svg>
+                    Text Analysis
+                </h2>
+                <p>Paste text content for quick analysis with voice summary</p>
+                
+                <textarea class="textarea" id="text-input" placeholder="Paste your legal text, clause, or contract here..." maxlength="50000"></textarea>
+                <div style="text-align: right; font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">
+                    <span id="char-count">0</span> / 50,000 characters
+                </div>
+                
+                <button class="btn" id="analyze-text-btn" style="width: 100%; margin-top: 1rem;">
+                    Analyze Text
+                </button>
+                
+                <div class="loading-spinner" id="text-loading"></div>
             </div>
         </div>
 
-        <!-- System Status -->
-        <div class="status-grid" id="status-grid">
-            <div class="status-card">
-                <h3>🖥️ Server</h3>
-                <div id="server-status">Loading...</div>
+        <!-- Chat Section -->
+        <div class="card chat-section">
+            <h2 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,6A2,2 0 0,1 14,8A2,2 0 0,1 12,10A2,2 0 0,1 10,8A2,2 0 0,1 12,6M12,20C10,20 8.4,19.2 7.5,18C8.5,17 10.1,16.5 12,16.5C13.9,16.5 15.5,17 16.5,18C15.6,19.2 14,20 12,20Z"/>
+                </svg>
+                Legal Assistant Chat
+            </h2>
+            <p>Ask questions about legal terms, clauses, or get general guidance</p>
+            
+            <div class="chat-window" id="chat-window">
+                <div class="chat-message bot-message">
+                    <p>👋 Hello! I'm MyVakeel, your AI legal assistant. I can help you:</p>
+                    <ul style="margin-top: 0.5rem;">
+                        <li>📄 Explain legal terms and clauses</li>
+                        <li>⚖️ Provide general legal guidance</li>
+                        <li>📋 Summarize articles or documents</li>
+                        <li>⚠️ Identify potential risks</li>
+                        <li>🎤 Read analysis results aloud</li>
+                    </ul>
+                    <p style="margin-top: 0.5rem;"><strong>How can I help you today?</strong></p>
+                </div>
             </div>
-            <div class="status-card">
-                <h3>🔥 Firebase</h3>
-                <div id="firebase-status">Loading...</div>
-            </div>
-            <div class="status-card">
-                <h3>💾 Storage</h3>
-                <div id="storage-status">Loading...</div>
-            </div>
-            <div class="status-card">
-                <h3>🤖 AI Model</h3>
-                <div id="ai-status">Loading...</div>
+            
+            <div class="input-group">
+                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms, clauses, or analysis results..." maxlength="500">
+                <button class="btn" id="send-chat-btn">Send</button>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="card">
-            <h2>⚡ Quick Actions</h2>
-            <div class="btn-group">
-                <button class="btn" onclick="testDatabase()">🧪 Test Database</button>
-                <button class="btn" onclick="createSampleData()">📝 Create Sample Data</button>
-                <button class="btn" onclick="viewDatabase()">👁️ View Raw Data</button>
-                <button class="btn" onclick="refreshAll()">🔄 Refresh All</button>
-            </div>
-            <div id="action-result"></div>
-        </div>
+        <!-- Results Container -->
+        <div class="results-container" id="results-container">
+            <div class="card">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/>
+                    </svg>
+                    Analysis Results
+                </h2>
+                
+                <!-- Voice Player Section -->
+                <div class="voice-player-container" id="voice-player" style="display: none;">
+                    <div class="voice-controls">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <button class="voice-button" id="play-btn" onclick="playAnalysis()">
+                                <span>▶️</span> Play Analysis
+                            </button>
+                            <button class="voice-button" id="pause-btn" onclick="pauseAnalysis()" style="display: none;">
+                                <span>⏸️</span> Pause
+                            </button>
+                            <button class="voice-button" id="stop-btn" onclick="stopAnalysis()">
+                                <span>⏹️</span> Stop
+                            </button>
+                        </div>
+                        
+                        <div class="voice-settings">
+                            <span style="font-size: 0.9rem;">Language:</span>
+                            <select class="voice-select" id="voice-language" onchange="changeVoiceLanguage()">
+                                <option value="en-US">🇺🇸 English (US)</option>
+                                <option value="en-GB">🇬🇧 English (UK)</option>
+                                <option value="hi-IN">🇮🇳 Hindi</option>
+                                <option value="es-ES">🇪🇸 Spanish</option>
+                                <option value="fr-FR">🇫🇷 French</option>
+                                <option value="de-DE">🇩🇪 German</option>
+                                <option value="ja-JP">🇯🇵 Japanese</option>
+                                <option value="zh-CN">🇨🇳 Chinese</option>
+                            </select>
+                            
+                            <span style="font-size: 0.9rem;">Speed:</span>
+                            <input type="range" min="0.5" max="2" step="0.1" value="1" style="width: 80px;" onchange="changePlaybackSpeed(this.value)" id="speed-slider">
+                            <span id="speed-display">1x</span>
+                        </div>
+                    </div>
+                    
+                    <div class="voice-progress">
+                        <div class="voice-progress-bar" id="voice-progress-bar"></div>
+                    </div>
+                    
+                    <div class="voice-info">
+                        <span id="voice-current-section">Ready to play analysis</span>
+                        <span id="voice-duration">0:00 / 0:00</span>
+                    </div>
+                    
+                    <div class="voice-sections" id="voice-sections">
+                        <button class="voice-section-btn" onclick="playSection('summary')">
+                            📋 Summary <span style="opacity: 0.7;">(~2 min)</span>
+                        </button>
+                        <button class="voice-section-btn" onclick="playSection('risks')">
+                            ⚠️ Risks <span style="opacity: 0.7;">(~1 min)</span>
+                        </button>
+                        <button class="voice-section-btn" onclick="playSection('timeline')">
+                            📅 Timeline <span style="opacity: 0.7;">(~1 min)</span>
+                        </button>
+                        <button class="voice-section-btn" onclick="playSection('terms')">
+                            🔑 Key Terms <span style="opacity: 0.7;">(~2 min)</span>
+                        </button>
+                        <button class="voice-section-btn active" onclick="playSection('all')">
+                            🎵 Full Analysis <span style="opacity: 0.7;">(~6 min)</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabs for different views -->
+                <div class="tab-container">
+                    <div class="tab active" data-tab="summary">📋 Summary</div>
+                    <div class="tab" data-tab="risks">⚠️ Risks</div>
+                    <div class="tab" data-tab="timeline">📅 Timeline</div>
+                    <div class="tab" data-tab="terms">🔑 Key Terms</div>
+                    <div class="tab" data-tab="visual">🎨 Visual</div>
+                </div>
 
-        <!-- Database Viewer -->
-        <div class="card">
-            <h2>🗄️ Database Contents</h2>
-            <div class="btn-group">
-                <button class="btn" onclick="viewUsers()">👥 View Users</button>
-                <button class="btn" onclick="viewAnalyses()">📄 View Analyses</button>
-                <button class="btn" onclick="viewStats()">📊 Statistics</button>
-            </div>
-            <div id="database-content">
-                <p style="text-align: center; color: #666; padding: 2rem;">
-                    Select a view above to see database contents
-                </p>
+                <!-- Tab Contents -->
+                <div id="tab-summary" class="tab-content">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <h3>📋 Document Summary</h3>
+                            <div id="summary-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>📄 Document Type</h3>
+                            <div id="document-type-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>💡 Pro Tip</h3>
+                            <div id="tip-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-risks" class="tab-content" style="display: none;">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <h3>⚠️ Identified Risks</h3>
+                            <div id="risks-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>🚨 Important Clauses</h3>
+                            <div id="important-clauses-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-timeline" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>📅 Important Dates & Timeline</h3>
+                        <div id="timeline-content"></div>
+                    </div>
+                </div>
+
+                <div id="tab-terms" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>🔑 Key Terms Explained</h3>
+                        <div id="key-terms-content"></div>
+                    </div>
+                </div>
+
+                <div id="tab-visual" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>🎨 Visual Representation</h3>
+                        <div class="visual-container" id="visual-content"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // Auto-refresh every 30 seconds
-        setInterval(refreshAll, 30000);
-        
-        // Load initial data
-        document.addEventListener('DOMContentLoaded', refreshAll);
+    <!-- Login Modal -->
+    <div class="login-modal" id="login-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1rem;">🔐 Login Required</h2>
+            <p style="margin-bottom: 1.5rem; color: #666;">Please enter your email to save and access your document analyses.</p>
+            
+            <div class="input-group" style="flex-direction: column;">
+                <input type="email" class="form-input" id="email-input" placeholder="Enter your email address" style="margin-bottom: 1rem;">
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn" id="login-btn" style="flex: 1;">Login</button>
+                <button class="btn btn-secondary" id="cancel-login-btn" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-        async function refreshAll() {
-            await checkSystemStatus();
+    <!-- Floating Voice Widget -->
+    <button class="floating-voice-widget" id="floating-voice" onclick="toggleVoiceWidget()" title="Voice Assistant" style="display: none;">
+        🎤
+    </button>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        let analysisResults = null;
+        let currentUtterance = null;
+        let isPlaying = false;
+        let currentSection = 'all';
+        let speechSynthesis = window.speechSynthesis;
+
+        // DOM elements
+        const fileInput = document.getElementById('file-input');
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const textInput = document.getElementById('text-input');
+        const analyzeFileBtn = document.getElementById('analyze-file-btn');
+        const analyzeTextBtn = document.getElementById('analyze-text-btn');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatBtn = document.getElementById('send-chat-btn');
+        const chatWindow = document.getElementById('chat-window');
+        const resultsContainer = document.getElementById('results-container');
+        const loginModal = document.getElementById('login-modal');
+        const emailInput = document.getElementById('email-input');
+        const loginBtn = document.getElementById('login-btn');
+        const cancelLoginBtn = document.getElementById('cancel-login-btn');
+        const voicePlayer = document.getElementById('voice-player');
+        const floatingVoice = document.getElementById('floating-voice');
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            checkUserSession();
+            updateUserStatus();
+            checkServerStatus();
+            checkSpeechSynthesisSupport();
+            setupCharacterCounter();
+        });
+
+        function setupEventListeners() {
+            // File upload events
+            fileUploadArea.addEventListener('click', () => fileInput.click());
+            fileUploadArea.addEventListener('dragover', handleDragOver);
+            fileUploadArea.addEventListener('dragleave', handleDragLeave);
+            fileUploadArea.addEventListener('drop', handleFileDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+            analyzeFileBtn.addEventListener('click', analyzeFile);
+
+            // Text analysis events
+            analyzeTextBtn.addEventListener('click', analyzeText);
+
+            // Chat events
+            sendChatBtn.addEventListener('click', sendChatMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendChatMessage();
+            });
+
+            // Login events
+            loginBtn.addEventListener('click', handleLogin);
+            cancelLoginBtn.addEventListener('click', closeLoginModal);
+            emailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            // Speech synthesis events
+            if (speechSynthesis) {
+                speechSynthesis.addEventListener('voiceschanged', updateVoiceOptions);
+            }
         }
 
-        async function checkSystemStatus() {
+        // Character counter for text input
+        function setupCharacterCounter() {
+            const charCount = document.getElementById('char-count');
+            textInput.addEventListener('input', function() {
+                const count = this.value.length;
+                charCount.textContent = count;
+                
+                if (count > 45000) {
+                    charCount.style.color = '#dc2626';
+                } else if (count > 40000) {
+                    charCount.style.color = '#d97706';
+                } else {
+                    charCount.style.color = '#6b7280';
+                }
+            });
+        }
+
+        // Speech synthesis support check
+        function checkSpeechSynthesisSupport() {
+            if (!speechSynthesis) {
+                console.warn('Speech synthesis not supported in this browser');
+                return false;
+            }
+            
+            // Test if voices are available
+            const voices = speechSynthesis.getVoices();
+            if (voices.length === 0) {
+                // Voices might not be loaded yet, try again after a delay
+                setTimeout(() => {
+                    const voicesRetry = speechSynthesis.getVoices();
+                    if (voicesRetry.length === 0) {
+                        console.warn('No voices available for speech synthesis');
+                    } else {
+                        updateVoiceOptions();
+                    }
+                }, 1000);
+            } else {
+                updateVoiceOptions();
+            }
+            
+            return true;
+        }
+
+        function updateVoiceOptions() {
+            const voices = speechSynthesis.getVoices();
+            const languageSelect = document.getElementById('voice-language');
+            
+            // Keep current selection
+            const currentSelection = languageSelect.value;
+            
+            // Clear and rebuild options based on available voices
+            const availableLanguages = new Set();
+            voices.forEach(voice => {
+                const langCode = voice.lang.toLowerCase();
+                if (langCode.startsWith('en')) {
+                    availableLanguages.add('en-US');
+                    availableLanguages.add('en-GB');
+                } else if (langCode.startsWith('hi')) {
+                    availableLanguages.add('hi-IN');
+                } else if (langCode.startsWith('es')) {
+                    availableLanguages.add('es-ES');
+                } else if (langCode.startsWith('fr')) {
+                    availableLanguages.add('fr-FR');
+                } else if (langCode.startsWith('de')) {
+                    availableLanguages.add('de-DE');
+                } else if (langCode.startsWith('ja')) {
+                    availableLanguages.add('ja-JP');
+                } else if (langCode.startsWith('zh')) {
+                    availableLanguages.add('zh-CN');
+                }
+            });
+
+            // Restore selection if still available
+            if (availableLanguages.has(currentSelection)) {
+                languageSelect.value = currentSelection;
+            }
+
+            console.log(`Voice synthesis ready with ${voices.length} voices in ${availableLanguages.size} languages`);
+        }
+
+        // Server status checker
+        async function checkServerStatus() {
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
                 
-                document.getElementById('server-status').innerHTML = 
-                    `<span class="status ${data.status === 'healthy' ? 'online' : 'offline'}">${data.status}</span>`;
-                    
-                document.getElementById('firebase-status').innerHTML = 
-                    `<span class="status ${data.firebase_available ? 'online' : 'offline'}">
-                        ${data.firebase_available ? 'Connected' : 'Offline'}
-                    </span>`;
-                    
-                document.getElementById('storage-status').innerHTML = 
-                    `<span class="status ${data.storage_available ? 'online' : 'offline'}">
-                        ${data.storage_available ? 'Available' : 'Unavailable'}
-                    </span>`;
-                    
-                document.getElementById('ai-status').innerHTML = 
-                    `<span class="status ${data.ai_configured ? 'online' : 'offline'}">
-                        ${data.ai_configured ? 'Configured' : 'Not Configured'}
-                    </span>`;
-                        
+                if (data.status === 'healthy') {
+                    console.log('✅ Server is running properly');
+                    addServerIndicator('online');
+                } else {
+                    console.warn('⚠️ Server health check failed');
+                    addServerIndicator('warning');
+                }
             } catch (error) {
-                console.error('Status check failed:', error);
-                document.getElementById('server-status').innerHTML = '<span class="status offline">Offline</span>';
-                document.getElementById('firebase-status').innerHTML = '<span class="status offline">Unknown</span>';
-                document.getElementById('storage-status').innerHTML = '<span class="status offline">Unknown</span>';
-                document.getElementById('ai-status').innerHTML = '<span class="status offline">Unknown</span>';
+                console.error('❌ Server connection failed:', error);
+                showNotification('Server connection failed. Please start Flask app on http://localhost:5000', 'error');
+                addServerIndicator('offline');
             }
         }
 
-        async function testDatabase() {
-            const resultDiv = document.getElementById('action-result');
-            resultDiv.innerHTML = '<p>🧪 Testing database connection...</p>';
+        function addServerIndicator(status) {
+            // Remove existing indicator
+            const existing = document.querySelector('.server-indicator');
+            if (existing) existing.remove();
+
+            const indicator = document.createElement('div');
+            indicator.className = 'server-indicator';
+            indicator.style.cssText = `
+                position: fixed; top: 10px; left: 10px; 
+                width: 12px; height: 12px; 
+                border-radius: 50%; 
+                z-index: 1000;
+                transition: all 0.3s ease;
+            `;
+
+            const colors = {
+                online: '#10b981',
+                warning: '#d97706', 
+                offline: '#dc2626'
+            };
+
+            const titles = {
+                online: 'Server Online',
+                warning: 'Server Warning',
+                offline: 'Server Offline'
+            };
+
+            indicator.style.background = colors[status];
+            indicator.title = titles[status];
             
+            if (status === 'online') {
+                indicator.style.boxShadow = `0 0 8px ${colors[status]}40`;
+            }
+
+            document.body.appendChild(indicator);
+        }
+
+        // File handling functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        }
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                // Validate file size
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                if (file.size > 10 * 1024 * 1024) {
+                    showNotification(`File too large: ${sizeMB}MB. Maximum size is 10MB.`, 'error');
+                    fileInput.value = '';
+                    return;
+                }
+
+                analyzeFileBtn.disabled = false;
+                fileUploadArea.innerHTML = `
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#10b981">
+                        <path d="M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z"/>
+                    </svg>
+                    <p><strong>File selected:</strong> ${file.name}</p>
+                    <small>Size: ${sizeMB} MB • Type: ${file.type}</small>
+                `;
+            }
+        }
+
+        // Authentication functions
+        function checkUserSession() {
+            const savedUser = localStorage.getItem('myvakeel_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUserStatus();
+            }
+        }
+
+        function updateUserStatus() {
+            const userStatus = document.getElementById('user-status');
+            if (currentUser) {
+                userStatus.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; display: inline-block;">
+                        ✅ Logged in as: ${currentUser.email}
+                        <button onclick="logout()" style="background: none; border: none; color: white; margin-left: 10px; cursor: pointer; text-decoration: underline;">Logout</button>
+                    </div>
+                `;
+            } else {
+                userStatus.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; display: inline-block;">
+                        💬 Chat available without login | 📄 Login required for document analysis
+                    </div>
+                `;
+            }
+        }
+
+        function showLoginModal() {
+            loginModal.style.display = 'block';
+        }
+
+        function closeLoginModal() {
+            loginModal.style.display = 'none';
+        }
+
+        async function handleLogin() {
+            const email = emailInput.value.trim();
+            if (!email) {
+                showNotification('Please enter your email address', 'error');
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showNotification('Please enter a valid email address', 'error');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
             try {
-                const response = await fetch('/api/test-db');
+                let response;
+                try {
+                    response = await fetch('/api/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                } catch (apiError) {
+                    console.log('API route failed, trying fallback...');
+                    response = await fetch('/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response. Make sure Flask app is running on the correct port.');
+                }
+
                 const data = await response.json();
                 
                 if (data.success) {
-                    resultDiv.innerHTML = `
-                        <div style="background: #f0fff4; border: 1px solid #48bb78; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                            <strong>✅ Database Test Successful!</strong><br>
-                            Project: ${data.firebase_project || 'Unknown'}<br>
-                            Collections: ${data.collections_created.join(', ')}<br>
-                            <small>Test user and sample analysis created successfully!</small>
-                        </div>
-                    `;
+                    currentUser = { email: data.email };
+                    localStorage.setItem('myvakeel_user', JSON.stringify(currentUser));
+                    updateUserStatus();
+                    closeLoginModal();
+                    showNotification('Successfully logged in!', 'success');
                     
-                    // Auto-refresh users view after 1 second
-                    setTimeout(viewUsers, 1000);
+                    if (fileInput.files.length > 0) {
+                        analyzeFile();
+                    }
                 } else {
-                    resultDiv.innerHTML = `
-                        <div style="background: #fff5f5; border: 1px solid #f56565; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                            <strong>❌ Database Test Failed</strong><br>
-                            ${data.error}
-                        </div>
-                    `;
+                    showNotification(data.error || 'Login failed', 'error');
                 }
             } catch (error) {
-                resultDiv.innerHTML = `
-                    <div style="background: #fff5f5; border: 1px solid #f56565; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                        <strong>❌ Connection Failed</strong><br>
-                        ${error.message}<br>
-                        <small>Make sure Flask app is running on http://localhost:5000</small>
-                    </div>
-                `;
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. ';
+                
+                if (error.message.includes('non-JSON response')) {
+                    errorMessage += 'Please make sure the Flask server is running on http://localhost:5000';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server. Please check if Flask app is running.';
+                } else {
+                    errorMessage += 'Please try again.';
+                }
+                
+                showNotification(errorMessage, 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
             }
         }
 
-        async function createSampleData() {
-            await testDatabase(); // This creates sample data
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('myvakeel_user');
+            updateUserStatus();
+            showNotification('Logged out successfully', 'success');
         }
 
-        async function viewDatabase() {
-            const resultDiv = document.getElementById('action-result');
-            resultDiv.innerHTML = '<p>👁️ Loading raw database data...</p>';
-            
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        // Enhanced Analysis functions
+        async function analyzeFile() {
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select a file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show progress
+            showUploadProgress();
+            analyzeFileBtn.disabled = true;
+            analyzeFileBtn.textContent = 'Analyzing...';
+
             try {
-                const response = await fetch('/api/view-db');
+                let response;
+                try {
+                    response = await fetch('/api/analyze-file', {
+                        method: 'POST',
+                        headers: { 'User-Email': currentUser.email },
+                        body: formData
+                    });
+                } catch (apiError) {
+                    response = await fetch('/analyze-file', {
+                        method: 'POST',
+                        headers: { 'User-Email': currentUser.email },
+                        body: formData
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server error: Make sure Flask app is running properly');
+                }
+
                 const data = await response.json();
                 
-                if (data.error) {
-                    resultDiv.innerHTML = `<p style="color: #f56565;">❌ ${data.error}</p>`;
-                    return;
+                if (data.success) {
+                    analysisResults = data.result;
+                    displayEnhancedResults(data.result);
+                    showNotification(`Document analyzed successfully! (${data.file_size})`, 'success');
+                } else {
+                    showAnalysisError(data);
                 }
-                
-                resultDiv.innerHTML = `
-                    <div style="margin: 1rem 0;">
-                        <h4>🗄️ Raw Database Contents</h4>
-                        <p><strong>Users:</strong> ${data.total_users} | <strong>Analyses:</strong> ${data.total_analyses}</p>
-                        <div class="json-view">${JSON.stringify(data, null, 2)}</div>
-                    </div>
-                `;
             } catch (error) {
-                resultDiv.innerHTML = `<p style="color: #f56565;">❌ Error: ${error.message}</p>`;
+                console.error('File analysis error:', error);
+                showAnalysisError({ 
+                    error: 'Analysis failed',
+                    details: error.message,
+                    suggestion: error.message.includes('Server error') ? 
+                        'Please check if Flask server is running on http://localhost:5000' :
+                        'Please try again or contact support'
+                });
+            } finally {
+                hideUploadProgress();
+                analyzeFileBtn.disabled = false;
+                analyzeFileBtn.textContent = 'Analyze Document';
             }
         }
 
-        async function viewUsers() {
+        async function analyzeText() {
+            const text = textInput.value.trim();
+            if (!text) {
+                showNotification('Please enter some text to analyze', 'error');
+                return;
+            }
+
+            if (text.length > 50000) {
+                showNotification(`Text too long (${text.length} chars). Maximum is 50,000 characters.`, 'error');
+                return;
+            }
+
+            showLoading('text-loading', true);
+            analyzeTextBtn.disabled = true;
+            analyzeTextBtn.textContent = 'Analyzing...';
+
             try {
-                const response = await fetch('/admin/users');
+                let response;
+                try {
+                    response = await fetch('/api/analyze-text', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'User-Email': currentUser ? currentUser.email : ''
+                        },
+                        body: JSON.stringify({ text })
+                    });
+                } catch (apiError) {
+                    response = await fetch('/analyze-text', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'User-Email': currentUser ? currentUser.email : ''
+                        },
+                        body: JSON.stringify({ text })
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server error: Make sure Flask app is running properly');
+                }
+
                 const data = await response.json();
                 
-                if (data.error) {
-                    document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ ${data.error}</p>`;
-                    return;
+                if (data.success) {
+                    analysisResults = data.result;
+                    displayEnhancedResults(data.result);
+                    showNotification(`Text analyzed successfully! (${data.text_length} characters)`, 'success');
+                } else {
+                    showAnalysisError(data);
                 }
-                
-                if (data.users.length === 0) {
-                    document.getElementById('database-content').innerHTML = `
-                        <div style="text-align: center; padding: 3rem; background: #f8fafc; border-radius: 15px;">
-                            <h3 style="color: #667eea;">👥 No Users Yet</h3>
-                            <p style="color: #666; margin: 1rem 0;">Users will appear here when they log in to analyze documents.</p>
-                            <button class="btn" onclick="testDatabase()">🧪 Create Test User</button>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const usersHtml = `
-                    <div class="data-table">
-                        <h3 style="padding: 1rem; margin: 0; background: #f8fafc;">👥 Registered Users (${data.users.length})</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Email</th>
-                                    <th>Created At</th>
-                                    <th>Last Login</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.users.map(user => `
-                                    <tr>
-                                        <td><strong>${user.email}</strong></td>
-                                        <td>${user.created_at || 'N/A'}</td>
-                                        <td>${user.last_login || 'N/A'}</td>
-                                        <td>
-                                            <span class="status ${user.test_user ? 'offline' : 'online'}" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">
-                                                ${user.test_user ? 'Test User' : 'Active'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                document.getElementById('database-content').innerHTML = usersHtml;
             } catch (error) {
-                document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ Error loading users: ${error.message}</p>`;
+                console.error('Text analysis error:', error);
+                showAnalysisError({
+                    error: 'Analysis failed',
+                    details: error.message,
+                    suggestion: 'Please try again with simpler text'
+                });
+            } finally {
+                showLoading('text-loading', false);
+                analyzeTextBtn.disabled = false;
+                analyzeTextBtn.textContent = 'Analyze Text';
             }
         }
 
-        async function viewAnalyses() {
-            try {
-                const response = await fetch('/admin/analyses');
-                const data = await response.json();
-                
-                if (data.error) {
-                    document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ ${data.error}</p>`;
-                    return;
-                }
-                
-                if (data.analyses.length === 0) {
-                    document.getElementById('database-content').innerHTML = `
-                        <div style="text-align: center; padding: 3rem; background: #f8fafc; border-radius: 15px;">
-                            <h3 style="color: #667eea;">📄 No Analyses Yet</h3>
-                            <p style="color: #666; margin: 1rem 0;">Document analyses will appear here when users upload files.</p>
-                            <div style="margin-top: 1.5rem;">
-                                <p><strong>Try this:</strong></p>
-                                <ol style="text-align: left; display: inline-block; margin: 1rem 0;">
-                                    <li>Go to the <a href="/" style="color: #667eea;">main app</a></li>
-                                    <li>Login with an email</li>
-                                    <li>Upload a document or analyze text</li>
-                                    <li>Come back here to see the results!</li>
-                                </ol>
-                            </div>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const analysesHtml = `
-                    <div class="data-table">
-                        <h3 style="padding: 1rem; margin: 0; background: #f8fafc;">📄 Recent Analyses (${data.analyses.length})</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>File Name</th>
-                                    <th>File Type</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.analyses.map(analysis => `
-                                    <tr>
-                                        <td>${analysis.user_email}</td>
-                                        <td><strong>${analysis.file_name}</strong></td>
-                                        <td>
-                                            <span style="background: #e2e8f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
-                                                ${analysis.file_type}
-                                            </span>
-                                        </td>
-                                        <td>${analysis.created_at || 'N/A'}</td>
-                                        <td>
-                                            <button class="btn" onclick="viewAnalysisDetails('${analysis.doc_id}', ${JSON.stringify(analysis).replace(/"/g, '&quot;')})" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                                                👁️ View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                document.getElementById('database-content').innerHTML = analysesHtml;
-            } catch (error) {
-                document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ Error loading analyses: ${error.message}</p>`;
-            }
+        // Progress tracking functions
+        function showUploadProgress() {
+            const progressContainer = document.getElementById('upload-progress');
+            progressContainer.style.display = 'block';
+            
+            // Simulate progress steps
+            setTimeout(() => updateProgressStep('upload', 25), 500);
+            setTimeout(() => updateProgressStep('extract', 50), 1500);
+            setTimeout(() => updateProgressStep('analyze', 75), 3000);
         }
 
-        function viewAnalysisDetails(docId, analysisData) {
-            const analysis = typeof analysisData === 'string' ? JSON.parse(analysisData) : analysisData;
+        function updateProgressStep(stepId, percentage) {
+            const step = document.getElementById(`step-${stepId}`);
+            const icon = step.querySelector('.step-icon');
+            const progressFill = document.getElementById('progress-fill');
+            const progressPercent = document.getElementById('progress-percent');
             
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.8); z-index: 1000; padding: 2rem;
-                overflow-y: auto; display: flex; align-items: center; justify-content: center;
-            `;
+            // Update previous steps to completed
+            const steps = ['upload', 'extract', 'analyze', 'complete'];
+            const currentIndex = steps.indexOf(stepId);
             
-            modal.innerHTML = `
-                <div style="background: white; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
-                    <div style="padding: 2rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin: 0;">📄 Analysis Details</h2>
-                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #f56565; color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">✕ Close</button>
-                    </div>
-                    <div style="padding: 2rem;">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
-                                <strong>📁 File:</strong><br>${analysis.file_name}
-                            </div>
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
-                                <strong>👤 User:</strong><br>${analysis.user_email}
-                            </div>
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
-                                <strong>📅 Date:</strong><br>${analysis.created_at || 'N/A'}
-                            </div>
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px;">
-                                <strong>📄 Type:</strong><br>${analysis.file_type}
-                            </div>
-                        </div>
-                        
-                        <h3 style="margin-bottom: 1rem;">🤖 AI Analysis Results:</h3>
-                        <div class="json-view" style="max-height: 400px;">${JSON.stringify(analysis.analysis_result, null, 2)}</div>
-                        
-                        ${analysis.storage_path ? `
-                            <h3 style="margin: 1.5rem 0 1rem;">📂 Storage Information:</h3>
-                            <p><strong>Storage Path:</strong> ${analysis.storage_path}</p>
-                            ${analysis.public_url ? `<p><strong>Public URL:</strong> <a href="${analysis.public_url}" target="_blank" style="color: #667eea;">View File</a></p>` : ''}
+            for (let i = 0; i <= currentIndex; i++) {
+                const stepElement = document.getElementById(`step-${steps[i]}`);
+                const stepIcon = stepElement.querySelector('.step-icon');
+                stepElement.classList.remove('pending');
+                stepElement.classList.add('completed');
+                stepIcon.classList.remove('pending');
+                stepIcon.classList.add('completed');
+                stepIcon.textContent = '✓';
+            }
+            
+            // Update current step
+            if (currentIndex < steps.length - 1) {
+                const nextStep = document.getElementById(`step-${steps[currentIndex + 1]}`);
+                const nextIcon = nextStep.querySelector('.step-icon');
+                nextStep.classList.add('active');
+                nextIcon.classList.remove('pending');
+                nextIcon.classList.add('active');
+            }
+            
+            progressFill.style.width = percentage + '%';
+            progressPercent.textContent = percentage + '%';
+        }
+
+        function hideUploadProgress() {
+            setTimeout(() => {
+                const progressContainer = document.getElementById('upload-progress');
+                progressContainer.style.display = 'none';
+                
+                // Reset all steps
+                const steps = ['upload', 'extract', 'analyze', 'complete'];
+                steps.forEach(stepId => {
+                    const step = document.getElementById(`step-${stepId}`);
+                    const icon = step.querySelector('.step-icon');
+                    step.className = 'progress-step';
+                    icon.className = 'step-icon pending';
+                    icon.textContent = steps.indexOf(stepId) + 1;
+                });
+                
+                document.getElementById('progress-fill').style.width = '0%';
+                document.getElementById('progress-percent').textContent = '0%';
+            }, 1000);
+        }
+
+        function showAnalysisError(errorData) {
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'error-container';
+            errorContainer.innerHTML = `
+                <div class="error-header">
+                    <div class="error-icon">❌</div>
+                    <div class="error-title">${errorData.error || 'Analysis Failed'}</div>
+                </div>
+                <div class="error-message">
+                    ${errorData.details || 'An unexpected error occurred during analysis.'}
+                </div>
+                ${errorData.suggestion ? `
+                    <div class="error-suggestions">
+                        <h4>💡 Suggestions:</h4>
+                        <p>${errorData.suggestion}</p>
+                        ${errorData.supported_types ? `
+                            <p><strong>Supported formats:</strong> ${errorData.supported_types.join(', ')}</p>
                         ` : ''}
                     </div>
+                ` : ''}
+                <div class="error-actions">
+                    <button class="btn" onclick="this.parentElement.parentElement.remove()">Try Again</button>
+                    <button class="btn btn-secondary" onclick="showSupportInfo()">Get Help</button>
                 </div>
             `;
             
-            document.body.appendChild(modal);
+            // Insert after file upload area
+            fileUploadArea.parentNode.insertBefore(errorContainer, fileUploadArea.nextSibling);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (errorContainer.parentNode) {
+                    errorContainer.remove();
+                }
+            }, 10000);
         }
 
-        function viewStats() {
-            // Generate statistics from current data
-            const statsHtml = `
-                <div style="text-align: center; padding: 3rem; background: #f8fafc; border-radius: 15px;">
-                    <h3 style="color: #667eea; margin-bottom: 2rem;">📊 Platform Statistics</h3>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
-                        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 2rem; color: #667eea; font-weight: bold;" id="stat-users">-</div>
-                            <div style="color: #666;">Total Users</div>
-                        </div>
-                        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 2rem; color: #48bb78; font-weight: bold;" id="stat-analyses">-</div>
-                            <div style="color: #666;">Analyses</div>
-                        </div>
-                        <div style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 2rem; color: #ed8936; font-weight: bold;">∞</div>
-                            <div style="color: #666;">Chat Messages</div>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: left; background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <h4 style="margin-bottom: 1rem;">📈 Quick Insights:</h4>
-                        <ul style="color: #666; line-height: 1.6;">
-                            <li>💬 <strong>Chat feature</strong> works without login - promoting accessibility</li>
-                            <li>📄 <strong>Document analysis</strong> requires email for data persistence</li>
-                            <li>🔥 <strong>Firebase integration</strong> enables real-time data storage</li>
-                            <li>🤖 <strong>AI-powered insights</strong> using Google Gemini API</li>
-                            <li>🎨 <strong>Visual representations</strong> make complex documents easier to understand</li>
-                        </ul>
-                    </div>
-                    
-                    <div style="margin-top: 2rem;">
-                        <p style="color: #666; font-size: 0.9rem;">
-                            Use "View Users" and "View Analyses" to see current platform activity
-                        </p>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('database-content').innerHTML = statsHtml;
-            
-            // Update stats with real data
-            updateStats();
+        function showSupportInfo() {
+            alert('🛠️ Need Help?\n\n• Make sure your Flask server is running on http://localhost:5000\n• Check that your API_KEY is properly configured\n• Try uploading a smaller or different format file\n• Use the text analysis feature as an alternative\n\nFor more help, check the console for detailed error messages.');
         }
 
-        async function updateStats() {
+        // Enhanced Chat functions
+        async function sendChatMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            addMessageToChat(query, 'user');
+            chatInput.value = '';
+
+            const thinkingMessage = addMessageToChat('🤔 MyVakeel is thinking...', 'bot', true);
+            sendChatBtn.disabled = true;
+
             try {
-                // Get users count
-                const usersResponse = await fetch('/admin/users');
-                const usersData = await usersResponse.json();
-                document.getElementById('stat-users').textContent = usersData.users ? usersData.users.length : 0;
+                let response;
+                try {
+                    response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+                } catch (apiError) {
+                    response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+                }
+
+                thinkingMessage.remove();
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    addMessageToChat('❌ Server error: Please make sure Flask app is running on http://localhost:5000', 'bot');
+                    return;
+                }
+
+                const data = await response.json();
                 
-                // Get analyses count
-                const analysesResponse = await fetch('/admin/analyses');
-                const analysesData = await analysesResponse.json();
-                document.getElementById('stat-analyses').textContent = analysesData.analyses ? analysesData.analyses.length : 0;
-                
+                if (data.response) {
+                    const botMessage = addMessageToChat(data.response, 'bot');
+                    
+                    // Add voice playback button for chat responses
+                    if (speechSynthesis) {
+                        const voiceBtn = document.createElement('button');
+                        voiceBtn.className = 'voice-button';
+                        voiceBtn.style.cssText = 'margin-top: 0.5rem; padding: 0.5rem 1rem; font-size: 0.8rem;';
+                        voiceBtn.innerHTML = '🔊 Play Response';
+                        voiceBtn.onclick = () => speakText(data.response);
+                        botMessage.appendChild(voiceBtn);
+                    }
+                } else {
+                    addMessageToChat('Sorry, I encountered an error. Please try again.', 'bot');
+                }
             } catch (error) {
-                console.error('Error updating stats:', error);
+                thinkingMessage.remove();
+                console.error('Chat error:', error);
+                
+                let errorMessage = '❌ ';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server. Please check if Flask app is running on http://localhost:5000';
+                } else {
+                    errorMessage += 'Sorry, I encountered an error. Please try again.';
+                }
+                
+                addMessageToChat(errorMessage, 'bot');
+            } finally {
+                sendChatBtn.disabled = false;
             }
+        }
+
+        function addMessageToChat(message, sender, isTemporary = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}-message`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            
+            if (isTemporary) {
+                messageDiv.style.opacity = '0.7';
+                messageDiv.classList.add('thinking');
+            }
+            
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        // Enhanced Results display functions
+        function displayEnhancedResults(results) {
+            resultsContainer.style.display = 'block';
+            voicePlayer.style.display = 'block';
+            floatingVoice.style.display = 'block';
+            
+            // Display enhanced summary
+            if (results.summary) {
+                displayEnhancedSummary(results.summary);
+            }
+
+            // Display document type
+            if (results.document_type) {
+                const docTypeContent = document.getElementById('document-type-content');
+                docTypeContent.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #667eea20, #764ba220); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">📄 Document Classification</h4>
+                        <p style="font-size: 1.2rem; font-weight: 600; color: #2d3748; margin-bottom: 0.5rem;">${results.document_type}</p>
+                        <p style="color: #4a5568; font-size: 0.9rem;">This classification helps determine the relevant legal standards and typical provisions.</p>
+                    </div>
+                `;
+            }
+
+            // Display enhanced tip
+            if (results.tip) {
+                const tipContent = document.getElementById('tip-content');
+                tipContent.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #10b98120, #059669); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #10b981;">
+                        <h4 style="color: #10b981; margin-bottom: 0.75rem;">💡 Expert Tip</h4>
+                        <p style="color: #065f46; line-height: 1.6; font-weight: 500;">${results.tip}</p>
+                    </div>
+                `;
+            }
+
+            // Display enhanced key terms
+            if (results.key_terms) {
+                displayEnhancedKeyTerms(results.key_terms);
+            }
+
+            // Display enhanced risks
+            if (results.risks) {
+                displayEnhancedRisks(results.risks);
+            }
+
+            // Display important clauses
+            if (results.important_clauses) {
+                displayEnhancedClauses(results.important_clauses);
+            }
+
+            // Display enhanced timeline
+            if (results.timeline) {
+                displayEnhancedTimeline(results.timeline);
+            }
+
+            // Create enhanced visual representation
+            createEnhancedVisualizations(results);
+
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+            
+            // Show success message
+            showSuccessMessage();
+        }
+
+        function displayEnhancedSummary(summaryData) {
+            const container = document.getElementById('summary-content');
+            
+            if (Array.isArray(summaryData)) {
+                container.innerHTML = summaryData.map((point, index) => {
+                    const pointData = typeof point === 'object' ? point : { description: point };
+                    const categoryColors = {
+                        financial: '#10b981',
+                        benefits: '#8b5cf6', 
+                        termination: '#ef4444',
+                        obligations: '#f59e0b',
+                        general: '#667eea'
+                    };
+                    const color = categoryColors[pointData.category] || categoryColors.general;
+                    
+                    return `
+                        <div class="enhanced-summary-point">
+                            <div class="point-header">
+                                <div class="point-number" style="background: ${color};">${index + 1}</div>
+                                <div>
+                                    <h4>${pointData.title || `Key Point ${index + 1}`}</h4>
+                                </div>
+                            </div>
+                            <div class="point-content">
+                                <p>${pointData.description}</p>
+                                ${pointData.example ? `
+                                    <div class="example-box">
+                                        <strong>Example:</strong> ${pointData.example}
+                                    </div>
+                                ` : ''}
+                                ${pointData.impact ? `
+                                    <div class="impact-box">
+                                        <strong>Impact:</strong> ${pointData.impact}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="enhanced-summary-point">
+                        <div class="point-header">
+                            <div class="point-number">1</div>
+                            <div><h4>Document Analysis</h4></div>
+                        </div>
+                        <div class="point-content">
+                            <p>${summaryData}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function displayEnhancedKeyTerms(keyTerms) {
+            const container = document.getElementById('key-terms-content');
+            
+            if (Array.isArray(keyTerms)) {
+                container.innerHTML = `
+                    <div class="key-terms-grid">
+                        ${keyTerms.map(term => {
+                            const termData = typeof term === 'object' ? term : { term: term, explanation: 'Important legal concept' };
+                            return `
+                                <div class="term-card">
+                                    <div class="term-title">
+                                        🔑 ${termData.term}
+                                        ${termData.importance ? `<span class="term-importance ${termData.importance}">${termData.importance}</span>` : ''}
+                                    </div>
+                                    <div class="term-explanation">${termData.explanation}</div>
+                                    ${termData.example ? `
+                                        <div class="example-box" style="margin-top: 0.75rem;">
+                                            <strong>Example:</strong> ${termData.example}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `<p>${keyTerms}</p>`;
+            }
+        }
+
+        function displayEnhancedRisks(risks) {
+            const container = document.getElementById('risks-content');
+            
+            if (Array.isArray(risks)) {
+                container.innerHTML = risks.map(risk => {
+                    const riskData = typeof risk === 'object' ? risk : { title: 'Risk', description: risk };
+                    const severity = riskData.severity || 'medium';
+                    
+                    return `
+                        <div class="risk-item ${severity}-severity">
+                            <div class="risk-header">
+                                <div class="risk-title">⚠️ ${riskData.title}</div>
+                                <div class="severity-badge ${severity}">${severity}</div>
+                            </div>
+                            <p style="color: #374151; margin-bottom: 0.75rem;">${riskData.description}</p>
+                            ${riskData.impact ? `
+                                <div style="background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem;">
+                                    <strong style="color: #dc2626;">Impact:</strong> <span style="color: #374151;">${riskData.impact}</span>
+                                </div>
+                            ` : ''}
+                            ${riskData.mitigation ? `
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 6px;">
+                                    <strong style="color: #10b981;">How to address:</strong> <span style="color: #374151;">${riskData.mitigation}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="risk-item medium-severity">
+                        <div class="risk-header">
+                            <div class="risk-title">⚠️ General Risk</div>
+                            <div class="severity-badge medium">medium</div>
+                        </div>
+                        <p>${risks}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayEnhancedClauses(clauses) {
+            const container = document.getElementById('important-clauses-content');
+            
+            if (Array.isArray(clauses)) {
+                container.innerHTML = clauses.map(clause => `
+                    <div style="background: linear-gradient(135deg, #fef3c7, #fed7aa); border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+                        <h4 style="color: #92400e; margin-bottom: 0.75rem;">🚨 Important Clause</h4>
+                        <p style="color: #451a03; line-height: 1.6;">${typeof clause === 'object' ? `<strong>${clause.title}:</strong> ${clause.description}` : clause}</p>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #fef3c7, #fed7aa); border-left: 4px solid #f59e0b; padding: 1.5rem; border-radius: 10px;">
+                        <p style="color: #451a03;">${clauses}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayEnhancedTimeline(timeline) {
+            const container = document.getElementById('timeline-content');
+            
+            if (Array.isArray(timeline)) {
+                container.innerHTML = `
+                    <div class="timeline-improved">
+                        ${timeline.map((item, index) => {
+                            const itemData = typeof item === 'object' ? item : { event: item };
+                            const isLast = index === timeline.length - 1;
+                            
+                            return `
+                                <div class="timeline-item-improved">
+                                    ${!isLast ? '<div class="timeline-line"></div>' : ''}
+                                    <div class="timeline-dot"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date">📅 ${itemData.date || 'Important Date'}</div>
+                                        <div class="timeline-event">${itemData.event}</div>
+                                        ${itemData.action_required ? `
+                                            <div class="timeline-action">
+                                                <strong>Action needed:</strong> ${itemData.action_required}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="timeline-improved">
+                        <div class="timeline-item-improved">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-event">${timeline}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function showSuccessMessage() {
+            const successContainer = document.createElement('div');
+            successContainer.className = 'success-container';
+            successContainer.innerHTML = `
+                <div class="success-header">
+                    <div class="success-icon">✅</div>
+                    <div style="color: #10b981; font-weight: bold; font-size: 1.1rem;">Analysis Complete!</div>
+                </div>
+                <div style="color: #065f46; margin-bottom: 1rem;">
+                    Your document has been successfully analyzed. Review the insights below and use the voice feature to listen to the analysis.
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="voice-button" onclick="playAnalysis()" style="background: #10b981;">
+                        🎵 Play Full Analysis
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove()">
+                        Dismiss
+                    </button>
+                </div>
+            `;
+            
+            // Insert at the top of results
+            resultsContainer.querySelector('.card').insertBefore(successContainer, resultsContainer.querySelector('.card').firstChild);
+            
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                if (successContainer.parentNode) {
+                    successContainer.remove();
+                }
+            }, 8000);
+        }
+
+        // Enhanced Visual Representations
+        function createEnhancedVisualizations(results) {
+            const container = document.getElementById('visual-content');
+            container.innerHTML = '';
+
+            // Create summary statistics
+            const stats = generateAnalysisStatistics(results);
+            
+            container.innerHTML = `
+                <div class="simple-chart">
+                    <h4 style="text-align: center; margin-bottom: 1.5rem; color: #374151;">📊 Document Analysis Overview</h4>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div style="background: linear-gradient(135deg, #667eea20, #667eea10); border: 2px solid #667eea; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 2.5rem; color: #667eea; font-weight: bold;">${stats.summaryPoints}</div>
+                            <div style="color: #4a5568; font-weight: 600;">Key Points</div>
+                            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">Legal concepts explained</div>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, #f59e0b20, #f59e0b10); border: 2px solid #f59e0b; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 2.5rem; color: #f59e0b; font-weight: bold;">${stats.timelineCount}</div>
+                            <div style="color: #4a5568; font-weight: 600;">Timeline Items</div>
+                            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">Important dates</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; border-radius: 12px; padding: 1.5rem; text-align: center;">
+                        <h4 style="color: #374151; margin-bottom: 1rem;">🎯 Analysis Completeness</h4>
+                        <div style="background: #e5e7eb; height: 12px; border-radius: 6px; overflow: hidden; margin: 1rem 0;">
+                            <div style="background: linear-gradient(90deg, #10b981, #059669); height: 100%; width: ${stats.completeness}%; border-radius: 6px; transition: width 1s ease;"></div>
+                        </div>
+                        <div style="color: #6b7280; font-size: 0.9rem;">
+                            <strong>${stats.completeness}%</strong> of document elements analyzed
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateAnalysisStatistics(results) {
+            const stats = {
+                summaryPoints: 0,
+                riskCount: 0,
+                termCount: 0,
+                timelineCount: 0,
+                completeness: 0
+            };
+
+            if (results.summary && Array.isArray(results.summary)) {
+                stats.summaryPoints = results.summary.length;
+            }
+
+            if (results.risks && Array.isArray(results.risks)) {
+                stats.riskCount = results.risks.length;
+            }
+
+            if (results.key_terms && Array.isArray(results.key_terms)) {
+                stats.termCount = results.key_terms.length;
+            }
+
+            if (results.timeline && Array.isArray(results.timeline)) {
+                stats.timelineCount = results.timeline.length;
+            }
+
+            // Calculate completeness based on available data
+            const fields = ['summary', 'risks', 'key_terms', 'timeline', 'document_type', 'tip'];
+            const completedFields = fields.filter(field => results[field] && results[field] !== '').length;
+            stats.completeness = Math.round((completedFields / fields.length) * 100);
+
+            return stats;
+        }
+
+        // Voice Feature Functions
+        function playAnalysis() {
+            if (!analysisResults) {
+                showNotification('No analysis available to play', 'error');
+                return;
+            }
+
+            if (!speechSynthesis) {
+                showNotification('Speech synthesis not supported in this browser', 'error');
+                return;
+            }
+
+            const section = currentSection;
+            const language = document.getElementById('voice-language').value;
+            const speed = parseFloat(document.getElementById('speed-slider').value);
+
+            playSection(section, language, speed);
+        }
+
+        function playSection(section, language = 'en-US', speed = 1.0) {
+            if (currentUtterance) {
+                speechSynthesis.cancel();
+            }
+
+            currentSection = section;
+            const text = formatAnalysisForSpeech(analysisResults, section);
+            
+            if (!text) {
+                showNotification('No content available for this section', 'warning');
+                return;
+            }
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = language;
+            currentUtterance.rate = speed;
+            currentUtterance.pitch = 1.0;
+            currentUtterance.volume = 1.0;
+
+            // Set voice if available
+            const voices = speechSynthesis.getVoices();
+            const voice = voices.find(v => v.lang.startsWith(language.split('-')[0]));
+            if (voice) {
+                currentUtterance.voice = voice;
+            }
+
+            // Event handlers
+            currentUtterance.onstart = () => {
+                isPlaying = true;
+                updateVoicePlayerUI();
+                document.getElementById('play-btn').style.display = 'none';
+                document.getElementById('pause-btn').style.display = 'inline-flex';
+                floatingVoice.classList.add('listening');
+            };
+
+            currentUtterance.onend = () => {
+                isPlaying = false;
+                updateVoicePlayerUI();
+                document.getElementById('play-btn').style.display = 'inline-flex';
+                document.getElementById('pause-btn').style.display = 'none';
+                floatingVoice.classList.remove('listening');
+                document.getElementById('voice-current-section').textContent = 'Analysis complete';
+            };
+
+            currentUtterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                showNotification('Voice playback failed. Please try again.', 'error');
+                isPlaying = false;
+                updateVoicePlayerUI();
+            };
+
+            // Update UI
+            document.getElementById('voice-current-section').textContent = `Playing: ${getSectionName(section)}`;
+            updateActiveSectionButton(section);
+
+            // Start playback
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        function pauseAnalysis() {
+            if (speechSynthesis && isPlaying) {
+                speechSynthesis.pause();
+                document.getElementById('play-btn').style.display = 'inline-flex';
+                document.getElementById('pause-btn').style.display = 'none';
+                document.getElementById('voice-current-section').textContent = 'Paused';
+                floatingVoice.classList.remove('listening');
+            }
+        }
+
+        function stopAnalysis() {
+            if (speechSynthesis) {
+                speechSynthesis.cancel();
+                isPlaying = false;
+                updateVoicePlayerUI();
+                document.getElementById('play-btn').style.display = 'inline-flex';
+                document.getElementById('pause-btn').style.display = 'none';
+                document.getElementById('voice-current-section').textContent = 'Ready to play analysis';
+                floatingVoice.classList.remove('listening');
+            }
+        }
+
+        function changeVoiceLanguage() {
+            const language = document.getElementById('voice-language').value;
+            if (isPlaying) {
+                stopAnalysis();
+                setTimeout(() => playSection(currentSection, language), 100);
+            }
+        }
+
+        function changePlaybackSpeed(speed) {
+            document.getElementById('speed-display').textContent = speed + 'x';
+            if (isPlaying) {
+                // Store current position and restart with new speed
+                stopAnalysis();
+                setTimeout(() => playSection(currentSection, document.getElementById('voice-language').value, parseFloat(speed)), 100);
+            }
+        }
+
+        function formatAnalysisForSpeech(analysisData, section = 'all') {
+            let speechParts = [];
+
+            try {
+                if (section === 'all' || section === 'summary') {
+                    if (analysisData.summary && Array.isArray(analysisData.summary)) {
+                        speechParts.push("Document Summary.");
+                        analysisData.summary.forEach((item, index) => {
+                            const point = typeof item === 'object' ? item : { description: item };
+                            speechParts.push(`Point ${index + 1}: ${point.title || point.description}.`);
+                            if (point.example) {
+                                speechParts.push(`For example, ${point.example}.`);
+                            }
+                        });
+                    }
+                }
+
+                if (section === 'all' || section === 'risks') {
+                    if (analysisData.risks && Array.isArray(analysisData.risks)) {
+                        speechParts.push("Risk Analysis.");
+                        analysisData.risks.forEach(risk => {
+                            const riskData = typeof risk === 'object' ? risk : { description: risk };
+                            const severity = riskData.severity || 'medium';
+                            speechParts.push(`${severity} severity risk: ${riskData.title || 'Risk'}. ${riskData.description}.`);
+                            if (riskData.mitigation) {
+                                speechParts.push(`To address this: ${riskData.mitigation}.`);
+                            }
+                        });
+                    }
+                }
+
+                if (section === 'all' || section === 'timeline') {
+                    if (analysisData.timeline && Array.isArray(analysisData.timeline)) {
+                        speechParts.push("Important Dates and Timeline.");
+                        analysisData.timeline.forEach(item => {
+                            const timelineData = typeof item === 'object' ? item : { event: item };
+                            speechParts.push(`${timelineData.date || 'Important date'}: ${timelineData.event}.`);
+                            if (timelineData.action_required) {
+                                speechParts.push(`Action required: ${timelineData.action_required}.`);
+                            }
+                        });
+                    }
+                }
+
+                if (section === 'all' || section === 'terms') {
+                    if (analysisData.key_terms && Array.isArray(analysisData.key_terms)) {
+                        speechParts.push("Key Terms Explained.");
+                        analysisData.key_terms.forEach(term => {
+                            const termData = typeof term === 'object' ? term : { term: term };
+                            speechParts.push(`${termData.term}: ${termData.explanation || 'Important legal concept'}.`);
+                        });
+                    }
+                }
+
+                if (analysisData.tip && section === 'all') {
+                    speechParts.push(`Pro tip: ${analysisData.tip}`);
+                }
+
+                // Add disclaimer
+                speechParts.push("Remember, this is general information and not legal advice. For specific legal matters, consult with a qualified attorney.");
+
+            } catch (error) {
+                console.error('Speech formatting error:', error);
+                return "Analysis completed. Please review the document details on screen.";
+            }
+
+            return speechParts.join(" ");
+        }
+
+        function getSectionName(section) {
+            const names = {
+                'summary': 'Summary',
+                'risks': 'Risks',
+                'timeline': 'Timeline',
+                'terms': 'Key Terms',
+                'all': 'Full Analysis'
+            };
+            return names[section] || 'Analysis';
+        }
+
+        function updateActiveSectionButton(section) {
+            document.querySelectorAll('.voice-section-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeBtn = document.querySelector(`[onclick*="${section}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+        }
+
+        function updateVoicePlayerUI() {
+            // Update voice player UI based on current state
+            if (isPlaying) {
+                floatingVoice.classList.add('listening');
+            } else {
+                floatingVoice.classList.remove('listening');
+            }
+        }
+
+        function speakText(text) {
+            if (!speechSynthesis) {
+                showNotification('Speech synthesis not supported', 'error');
+                return;
+            }
+
+            if (currentUtterance) {
+                speechSynthesis.cancel();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            speechSynthesis.speak(utterance);
+        }
+
+        function toggleVoiceWidget() {
+            if (analysisResults) {
+                playAnalysis();
+            } else {
+                showNotification('No analysis available to play. Upload a document or enter text first.', 'warning');
+            }
+        }
+
+        // Tab switching function
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            const selectedContent = document.getElementById(`tab-${tabName}`);
+            if (selectedContent) {
+                selectedContent.style.display = 'block';
+            }
+
+            // Add active class to selected tab
+            const selectedTab = document.querySelector(`[data-tab="${tabName}"]`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+        }
+
+        // Utility functions
+        function showLoading(elementId, show) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize speech synthesis on page load
+        if (speechSynthesis) {
+            speechSynthesis.onvoiceschanged = updateVoiceOptions;
         }
     </script>
 </body>
-</html>
+</html>; color: #6b7280; margin-top: 0.5rem;">Main document insights</div>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, #ef444420, #ef444410); border: 2px solid #ef4444; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 2.5rem; color: #ef4444; font-weight: bold;">${stats.riskCount}</div>
+                            <div style="color: #4a5568; font-weight: 600;">Risks Identified</div>
+                            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">Potential concerns</div>
+                        </div>
+                        
+                        <div style="background: linear-gradient(135deg, #10b98120, #10b98110); border: 2px solid #10b981; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 2.5rem; color: #10b981; font-weight: bold;">${stats.termCount}</div>
+                            <div style="color: #4a5568; font-weight: 600;">Key Terms</div>
+                            <div style="font-size: 0.8rem
