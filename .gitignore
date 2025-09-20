@@ -1,37 +1,22 @@
-# Environment variables (CRITICAL - NEVER COMMIT)
-.env
-.env.local
-.env.*.local
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Firebase
-firebase-debug.log
-firebase-debug.*.log
-.firebase/
-firebase-adminsdk-*.json
+# Environment variables
+.env
+.flaskenv
+
+# Firebase credentials
+serviceAccountKey.json
+firebase-admin-sdk.json
 
 # IDE
 .vscode/
@@ -41,20 +26,20 @@ firebase-adminsdk-*.json
 
 # OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Logs
 *.log
 logs/
 
-# Dependencies
+# Database
+*.db
+*.sqlite
+
+# Node modules (if any)
 node_modules/
 
-# Temporary files
-*.tmp
-*.temp
+# Uploads
+uploads/
+temp/
+EOF
