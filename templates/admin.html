@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVakeel - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* This is a temporary style block for the admin panel */
+        body { background: linear-gradient(135deg, #2d3748, #4a5568); color: #c9d1d9; }
+        .admin-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .admin-header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem; text-align: center; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .status-card { background: #161b22; padding: 1.5rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
+        .status.online { background: #48bb78; color: white; padding: 0.5rem 1rem; border-radius: 20px; display: inline-block; }
+        .status.offline { background: #f56565; color: white; padding: 0.5rem 1rem; border-radius: 20px; display: inline-block; }
+        .data-table { background: #161b22; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .data-table table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #30363d; }
+        .data-table th { background: #21262d; font-weight: 600; }
+        .btn-group { margin: 1rem 0; }
+        .btn {
+            background-color: #58a6ff;
+            color: #0d1117;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .btn:hover { background-color: #79b8ff; }
+        .card { background: #161b22; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .json-view { background: #2d3748; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow: auto; font-family: monospace; font-size: 0.9rem; max-height: 400px; }    
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🛠️ MyVakeel Admin Panel</h1>
+            <p>Monitor your application and database activity</p>
+            <div style="margin-top: 1rem;">
+                <a href="/" class="btn" style="color: white; text-decoration: none;">← Back to App</a>
+            </div>
+        </div>
+        <!-- System Status -->
+        <div class="status-grid" id="status-grid">
+            <div class="status-card">
+                <h3>🖥️ Server</h3>
+                <div id="server-status"><span class="status online">Online</span></div>
+            </div>
+            <div class="status-card">
+                <h3>🔥 Firebase</h3>
+                <div id="firebase-status">Loading...</div>
+            </div>
+            <div class="status-card">
+                <h3>💾 Storage</h3>
+                <div id="storage-status">Loading...</div>
+            </div>
+            <div class="status-card">
+                <h3>🤖 AI Model</h3>
+                <div id="ai-status">Loading...</div>
+            </div>
+        </div>
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>⚡ Quick Actions</h2>
+            <div class="btn-group">
+                <button class="btn" onclick="testDatabase()">🧪 Test Database</button>
+                <button class="btn" onclick="viewDatabase()">👁️ View Raw Data</button>
+                <button class="btn" onclick="refreshAll()">🔄 Refresh All</button>
+            </div>
+            <div id="action-result"></div>
+        </div>
+        <!-- Database Viewer -->
+        <div class="card">
+            <h2>🗄️ Database Contents</h2>
+            <div class="btn-group">
+                <button class="btn" onclick="viewUsers()">👥 View Users</button>
+                <button class="btn" onclick="viewAnalyses()">📄 View Analyses</button>
+                <button class="btn" onclick="viewStats()">📊 Statistics</button>
+            </div>
+            <div id="database-content">
+                <p style="text-align: center; color: #888; padding: 2rem;">
+                    Select a view above to see database contents
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_URL = window.location.origin;
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshAll, 30000);
+
+        document.addEventListener('DOMContentLoaded', refreshAll);
+
+        async function refreshAll() {
+            await checkSystemStatus();
+        }
+
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+
+                document.getElementById('server-status').innerHTML =
+                    `<span class="status online">Online</span>`; // Always assume server is on if we get a response
+
+                document.getElementById('firebase-status').innerHTML =
+                    `<span class="status ${data.firebase_available ? 'online' : 'offline'}">
+                        ${data.firebase_available ? 'Connected' : 'Offline'}
+                    </span>`;
+
+                document.getElementById('storage-status').innerHTML =
+                    `<span class="status ${data.storage_available ? 'online' : 'offline'}">
+                        ${data.storage_available ? 'Available' : 'Unavailable'}
+                    </span>`;
+
+                document.getElementById('ai-status').innerHTML =
+                    `<span class="status ${data.ai_configured ? 'online' : 'offline'}">
+                        ${data.ai_configured ? 'Configured' : 'Not Configured'}
+                    </span>`;
+
+            } catch (error) {
+                console.error('Status check failed:', error);
+                document.getElementById('server-status').innerHTML = '<span class="status offline">Offline</span>';
+                document.getElementById('firebase-status').innerHTML = '<span class="status offline">Offline</span>';
+                document.getElementById('storage-status').innerHTML = '<span class="status offline">Offline</span>';
+                document.getElementById('ai-status').innerHTML = '<span class="status offline">Offline</span>';
+            }
+        }
+
+        async function testDatabase() {
+            const resultDiv = document.getElementById('action-result');
+            resultDiv.innerHTML = '<p>🧪 Testing database connection...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/test-db`);
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="background: #21262d; border: 1px solid #48bb78; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                            <strong>✅ Database Test Successful!</strong><br>
+                            Project: ${data.firebase_project || 'Unknown'}<br>
+                            Collections: ${data.collections_created.join(', ')}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: #21262d; border: 1px solid #f56565; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                            <strong>❌ Database Test Failed</strong><br>
+                            ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background: #21262d; border: 1px solid #f56565; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <strong>❌ Connection Failed</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function viewDatabase() {
+            const resultDiv = document.getElementById('action-result');
+            resultDiv.innerHTML = '<p>👁️ Loading raw database data...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/view-db`);
+                const data = await response.json();
+
+                if (data.error) {
+                    resultDiv.innerHTML = `<p>❌ ${data.error}</p>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div style="margin: 1rem 0;">
+                        <h4>Raw Database Contents</h4>
+                        <p><strong>Users:</strong> ${data.total_users} | <strong>Analyses:</strong> ${data.total_analyses}</p>
+                        <div class="json-view">${JSON.stringify(data, null, 2)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function viewUsers() {
+            try {
+                const response = await fetch(`${API_URL}/admin/users`);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('database-content').innerHTML = `<p>❌ ${data.error}</p>`;
+                    return;
+                }
+                
+                if (data.users.length === 0) {
+                    document.getElementById('database-content').innerHTML = `
+                        <div style="text-align: center; padding: 3rem;">
+                            <h3>👥 No Users Yet</h3>
+                            <p>Users will appear here when they log in to analyze documents.</p>
+                            <button class="btn" onclick="testDatabase()">Create Test User</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const usersHtml = `
+                    <div class="data-table">
+                        <h3 style="padding: 1rem;">👥 Registered Users (${data.users.length})</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.users.map(user => `
+                                    <tr>
+                                        <td><strong>${user.id}</strong></td>
+                                        <td>${new Date(user.created_at).toLocaleString() || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                document.getElementById('database-content').innerHTML = usersHtml;
+            } catch (error) {
+                document.getElementById('database-content').innerHTML = `<p>❌ Error loading users: ${error.message}</p>`;
+            }
+        }
+        
+        async function viewAnalyses() {
+            try {
+                const response = await fetch(`${API_URL}/admin/analyses`);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('database-content').innerHTML = `<p>❌ ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.analyses.length === 0) {
+                    document.getElementById('database-content').innerHTML = `
+                        <div style="text-align: center; padding: 3rem;">
+                            <h3>📄 No Analyses Yet</h3>
+                            <p>Document analyses will appear here when users upload files.</p>
+                            <p><strong>Try:</strong> Go to the main app and upload a document!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const analysesHtml = `
+                    <div class="data-table">
+                        <h3 style="padding: 1rem;">📄 Recent Analyses (${data.analyses.length})</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>File Name</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.analyses.map(analysis => `
+                                    <tr>
+                                        <td>${analysis.user_id}</td>
+                                        <td><strong>${analysis.file_name}</strong></td>
+                                        <td>${new Date(analysis.created_at).toLocaleString() || 'N/A'}</td>
+                                        <td>
+                                            <button class="btn" onclick="viewAnalysisDetails('${analysis.doc_id}')">
+                                                👁️ View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                document.getElementById('database-content').innerHTML = analysesHtml;
+            } catch (error) {
+                document.getElementById('database-content').innerHTML = `<p>❌ Error loading analyses: ${error.message}</p>`;
+            }
+        }
+        
+        async function viewAnalysisDetails(docId) {
+            try {
+                const response = await fetch(`${API_URL}/admin/analyses/${docId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error viewing analysis details: ${data.error}`);
+                    return;
+                }
+                
+                const analysis = data.analysis;
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.8); z-index: 1000; padding: 2rem;
+                    overflow-y: auto; display: flex; align-items: center; justify-content: center;
+                `;
+
+                modal.innerHTML = `
+                    <div style="background: #161b22; color: #c9d1d9; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                        <div style="padding: 2rem; border-bottom: 1px solid #30363d;">
+                            <h2 style="color: #58a6ff; margin: 0;">📄 Analysis Details</h2>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="float: right; background: #f56565; color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;">Close</button>
+                        </div>
+                        <div style="padding: 2rem;">
+                            <p><strong>File:</strong> ${analysis.file_name}</p>
+                            <p><strong>User:</strong> ${analysis.user_id}</p>
+                            <p><strong>Date:</strong> ${new Date(analysis.created_at).toLocaleString()}</p>
+                            
+                            <h3>Analysis Results:</h3>
+                            <div class="json-view">${JSON.stringify(analysis.analysis_result, null, 2)}</div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        function viewStats() {
+            document.getElementById('database-content').innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <h3>📊 Statistics</h3>
+                    <p>This is a placeholder for future statistics. To view data, use the "View Users" and "View Analyses" buttons.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

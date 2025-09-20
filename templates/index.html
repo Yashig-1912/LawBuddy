@@ -3,244 +3,799 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Policy Protector AI</title>
+    <title>MyVakeel - AI Legal Document Assistant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1 class="logo">MyVakeel</h1>
-            <p>Your personal guide to understanding legal documents.</p>
-            <div class="disclaimer">
-                <strong>Disclaimer:</strong> This tool is for informational purposes only and is not a substitute for legal advice from a qualified professional.
+        <!-- Header -->
+        <div class="header">
+            <h1>MyVakeel</h1>
+            <p>Your AI-powered legal document assistant</p>
+            <div id="user-status"></div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- File Upload Section -->
+            <div class="card">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    Document Analysis
+                </h2>
+                <p>Upload your legal document for AI-powered analysis</p>
+                
+                <div class="file-upload" id="file-upload-area">
+                    <input type="file" id="file-input" accept=".pdf,image/*,text/*" style="display: none;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#cbd5e0">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                    </svg>
+                    <p>Click to upload or drag & drop</p>
+                    <small>PDF, Images, or Text files (Max 10MB)</small>
+                </div>
+                
+                <button class="btn" id="analyze-file-btn" style="width: 100%; margin-top: 1rem;" disabled>
+                    Analyze Document
+                </button>
+                
+                <div class="loading-spinner" id="file-loading"></div>
             </div>
-        </header>
 
-        <main class="main-content">
-            <section class="file-analysis-section">
-                <h2>Document Analysis</h2>
-                <p>Upload your insurance policy or other legal document to get a simplified summary and risk analysis. 
+            <!-- Text Analysis Section -->
+            <div class="card">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"/>
+                    </svg>
+                    Text Analysis
+                </h2>
+                <p>Paste text content for quick analysis</p>
+                
+                <textarea class="textarea" id="text-input" placeholder="Paste your legal text, clause, or contract here..."></textarea>
+                
+                <button class="btn" id="analyze-text-btn" style="width: 100%; margin-top: 1rem;">
+                    Analyze Text
+                </button>
+                
+                <div class="loading-spinner" id="text-loading"></div>
+            </div>
+        </div>
 
-[Image of a document with a magnifying glass]
-</p>
-                <div class="file-upload-form">
-                    <input type="file" id="policy-file" accept=".pdf,image/*">
-                    <button id="analyze-button" disabled>Analyze Document</button>
-                    <div id="loading-spinner" class="loading-spinner"></div>
-                </div>
-                <div id="result-area" class="results" style="display:none;">
-                    <h3>AI Analysis:</h3>
-                    <div id="result-content"></div>
-                </div>
-            </section>
+        <!-- Chat Section -->
+        <div class="card chat-section">
+            <h2 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,6A2,2 0 0,1 14,8A2,2 0 0,1 12,10A2,2 0 0,1 10,8A2,2 0 0,1 12,6M12,20C10,20 8.4,19.2 7.5,18C8.5,17 10.1,16.5 12,16.5C13.9,16.5 15.5,17 16.5,18C15.6,19.2 14,20 12,20Z"/>
+                </svg>
+                Legal Assistant Chat
+            </h2>
+            <p>Ask questions about legal terms, clauses, or get general guidance</p>
             
-            <section class="chatbot-section">
-                <h2>Legal Chatbot</h2>
-                <div class="chat-window" id="chat-window">
-                    <div class="chat-message bot-message">
-                        <p>Hello! I'm MyVakeel. How can I help you understand your legal documents today?</p>
+            <div class="chat-window" id="chat-window">
+                <div class="chat-message bot-message">
+                    <p>👋 Hello! I'm MyVakeel, your AI legal assistant. I can help you understand legal documents, explain terms, and provide general guidance. How can I help you today?</p>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms, clauses, or upload analysis...">
+                <button class="btn" id="send-chat-btn">Send</button>
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div class="results-container" id="results-container">
+            <div class="card">
+                <h2 class="card-title">Analysis Results</h2>
+                
+                <!-- Tabs for different views -->
+                <div class="tab-container">
+                    <div class="tab active" data-tab="summary">Summary</div>
+                    <div class="tab" data-tab="risks">Risks</div>
+                    <div class="tab" data-tab="timeline">Timeline</div>
+                    <div class="tab" data-tab="visual">Visual</div>
+                </div>
+
+                <!-- Tab Contents -->
+                <div id="tab-summary" class="tab-content">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <h3>📋 Document Summary</h3>
+                            <div id="summary-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>💡 Pro Tip</h3>
+                            <div id="tip-content"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="chat-input-form">
-                    <input type="text" id="chat-input" placeholder="Ask a question about a term or clause...">
-                    <button id="send-chat-button">Send</button>
+
+                <div id="tab-risks" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>⚠️ Identified Risks</h3>
+                        <div id="risks-content"></div>
+                    </div>
                 </div>
-            </section>
-        </main>
+
+                <div id="tab-timeline" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>📅 Important Dates & Deadlines</h3>
+                        <div id="timeline-content"></div>
+                    </div>
+                </div>
+
+                <div id="tab-visual" class="tab-content" style="display: none;">
+                    <div class="result-card">
+                        <h3>🎨 Visual Representation</h3>
+                        <div class="visual-container" id="visual-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- Login Modal -->
+    <div class="login-modal" id="login-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1rem;">Login Required</h2>
+            <p style="margin-bottom: 1.5rem; color: #666;">Please enter your email to save and access your document analyses.</p>
+            
+            <div class="input-group">
+                <input type="email" class="form-input" id="email-input" placeholder="Enter your email address">
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button class="btn" id="login-btn">Login</button>
+                <button class="btn btn-secondary" id="cancel-login-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-        // Use global variables provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
 
-        let db, auth, userId;
-        
-        async function initializeFirebase() {
+    <script>
+        // Global variables
+        let currentUser = null;
+        let analysisResults = null;
+
+        // DOM elements
+        const fileInput = document.getElementById('file-input');
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const textInput = document.getElementById('text-input');
+        const analyzeFileBtn = document.getElementById('analyze-file-btn');
+        const analyzeTextBtn = document.getElementById('analyze-text-btn');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatBtn = document.getElementById('send-chat-btn');
+        const chatWindow = document.getElementById('chat-window');
+        const resultsContainer = document.getElementById('results-container');
+        const loginModal = document.getElementById('login-modal');
+        const emailInput = document.getElementById('email-input');
+        const loginBtn = document.getElementById('login-btn');
+        const cancelLoginBtn = document.getElementById('cancel-login-btn');
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            checkUserSession();
+            updateUserStatus();
+            checkServerStatus();
+        });
+
+        // Add server status checker
+        async function checkServerStatus() {
             try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                const response = await fetch('/api/health');
+                const data = await response.json();
                 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                if (data.status === 'healthy') {
+                    console.log('✅ Server is running properly');
+                    // Add a small green indicator
+                    const indicator = document.createElement('div');
+                    indicator.style.cssText = `
+                        position: fixed; top: 10px; left: 10px; 
+                        width: 10px; height: 10px; 
+                        background: #48bb78; border-radius: 50%; 
+                        z-index: 1000;
+                    `;
+                    indicator.title = 'Server Online';
+                    document.body.appendChild(indicator);
                 } else {
-                    await signInAnonymously(auth);
+                    console.warn('⚠️ Server health check failed');
                 }
-                
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        console.log("Firebase initialized. User ID:", userId);
-                        document.getElementById('analyze-button').disabled = false;
-                    } else {
-                        console.log("No user is signed in. Signing in anonymously...");
-                        await signInAnonymously(auth);
-                    }
-                });
             } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                document.getElementById('result-content').innerHTML = `Error: Firebase failed to initialize. ${error.message}`;
+                console.error('❌ Server connection failed:', error);
+                showNotification('Server connection failed. Please start Flask app on http://localhost:5000', 'error');
+                
+                // Add a red indicator
+                const indicator = document.createElement('div');
+                indicator.style.cssText = `
+                    position: fixed; top: 10px; left: 10px; 
+                    width: 10px; height: 10px; 
+                    background: #f56565; border-radius: 50%; 
+                    z-index: 1000;
+                `;
+                indicator.title = 'Server Offline';
+                document.body.appendChild(indicator);
             }
         }
-        
-        document.addEventListener('DOMContentLoaded', initializeFirebase);
 
-        const fileInput = document.getElementById('policy-file');
-        const analyzeButton = document.getElementById('analyze-button');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const resultArea = document.getElementById('result-area');
-        const resultContent = document.getElementById('result-content');
-        const chatInput = document.getElementById('chat-input');
-        const sendChatButton = document.getElementById('send-chat-button');
-        const chatWindow = document.getElementById('chat-window');
+        function setupEventListeners() {
+            // File upload events
+            fileUploadArea.addEventListener('click', () => fileInput.click());
+            fileUploadArea.addEventListener('dragover', handleDragOver);
+            fileUploadArea.addEventListener('dragleave', handleDragLeave);
+            fileUploadArea.addEventListener('drop', handleFileDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+            analyzeFileBtn.addEventListener('click', analyzeFile);
 
-        analyzeButton.addEventListener('click', async () => {
+            // Text analysis events
+            analyzeTextBtn.addEventListener('click', analyzeText);
+
+            // Chat events
+            sendChatBtn.addEventListener('click', sendChatMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendChatMessage();
+            });
+
+            // Login events
+            loginBtn.addEventListener('click', handleLogin);
+            cancelLoginBtn.addEventListener('click', closeLoginModal);
+            emailInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+        }
+
+        // File handling functions
+        function handleDragOver(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        }
+
+        function handleFileSelect() {
             const file = fileInput.files[0];
+            if (file) {
+                analyzeFileBtn.disabled = false;
+                fileUploadArea.innerHTML = `
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="#48bb78">
+                        <path d="M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z"/>
+                    </svg>
+                    <p>File selected: ${file.name}</p>
+                    <small>Ready to analyze</small>
+                `;
+            }
+        }
 
-            if (!file) {
-                resultContent.innerHTML = 'Please select a file to analyze.';
-                resultArea.style.display = 'block';
+        // Authentication functions
+        function checkUserSession() {
+            const savedUser = localStorage.getItem('myvakeel_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                updateUserStatus();
+            }
+        }
+
+        function updateUserStatus() {
+            const userStatus = document.getElementById('user-status');
+            if (currentUser) {
+                userStatus.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; display: inline-block;">
+                        ✅ Logged in as: ${currentUser.email}
+                        <button onclick="logout()" style="background: none; border: none; color: white; margin-left: 10px; cursor: pointer;">Logout</button>
+                    </div>
+                `;
+            } else {
+                userStatus.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; display: inline-block;">
+                        💬 Chat available without login | 📄 Login required for document analysis
+                    </div>
+                `;
+            }
+        }
+
+        function showLoginModal() {
+            loginModal.style.display = 'block';
+        }
+
+        function closeLoginModal() {
+            loginModal.style.display = 'none';
+        }
+
+        async function handleLogin() {
+            const email = emailInput.value.trim();
+            if (!email) {
+                showNotification('Please enter your email address', 'error');
                 return;
             }
 
-            loadingSpinner.style.display = 'block';
-            analyzeButton.disabled = true;
-            resultArea.style.display = 'block';
-            resultContent.innerHTML = '<p class="text-center">Uploading and analyzing your document...</p>';
+            if (!isValidEmail(email)) {
+                showNotification('Please enter a valid email address', 'error');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
 
             try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': userId || 'anonymous'
-                    },
-                    body: formData,
-                });
+                // Try API route first, then fallback route
+                let response;
+                try {
+                    response = await fetch('/api/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email })
+                    });
+                } catch (apiError) {
+                    console.log('API route failed, trying fallback...');
+                    response = await fetch('/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ email })
+                    });
+                }
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response. Make sure Flask app is running on the correct port.');
+                }
 
                 const data = await response.json();
                 
-                if (data.error) {
-                    resultContent.innerHTML = `Error: ${data.error}`;
-                } else if (response.ok) {
-                    if (data.result) {
-                        const aiResponse = data.result;
-                        
-                        let formattedHtml = '';
-                        
-                        if (aiResponse.summary && Array.isArray(aiResponse.summary)) {
-                            formattedHtml += `<div class="summary card">
-                                              <h3>Summary:</h3>
-                                              <ul>`;
-                            aiResponse.summary.forEach(item => {
-                                formattedHtml += `<li>${item}</li>`;
-                            });
-                            formattedHtml += `</ul></div>`;
-                        }
-
-                        if (aiResponse.mind_map) {
-                            const mindMapLines = aiResponse.mind_map.split('\\n').map(line => {
-                                const indent = line.match(/^\s*/)[0].length / 2;
-                                return `<span style="padding-left:${indent}em;">${line.trim()}</span><br>`;
-                            }).join('');
-
-                            formattedHtml += `<div class="mind-map card">
-                                              <h3>Visual Summary:</h3>
-                                              <div class="mind-map-display">
-                                                ${mindMapLines}
-                                              </div>
-                                              </div>`;
-                        }
-
-                        if (aiResponse.risks && Array.isArray(aiResponse.risks)) {
-                            formattedHtml += `<div class="risks card">
-                                              <h3>Identified Risks:</h3>
-                                              <ul>`;
-                            aiResponse.risks.forEach(risk => {
-                                formattedHtml += `<li>
-                                                  <strong>Risk:</strong> ${risk.simplified_explanation}
-                                                  <span class="risk-original">Original text: "${risk.original_text}"</span>
-                                              </li>`;
-                            });
-                            formattedHtml += `</ul></div>`;
-                        }
-
-                        if (aiResponse.tip) {
-                            formattedHtml += `<div class="tip card">
-                                              <h3>Did you know?</h3>
-                                              <p>${aiResponse.tip}</p>
-                                              </div>`;
-                        }
-                        
-                        resultContent.innerHTML = formattedHtml;
-                    } else {
-                        resultContent.innerHTML = `<h4>AI Response (Raw):</h4><pre class="raw-response">${JSON.stringify(data, null, 2)}</pre>`;
+                if (data.success) {
+                    currentUser = { email: data.email };
+                    localStorage.setItem('myvakeel_user', JSON.stringify(currentUser));
+                    updateUserStatus();
+                    closeLoginModal();
+                    showNotification('Successfully logged in!', 'success');
+                    
+                    // If there's a pending file analysis, proceed with it
+                    if (fileInput.files.length > 0) {
+                        analyzeFile();
                     }
                 } else {
-                    resultContent.innerHTML = `Error: ${data.error || 'Something went wrong.'}`;
+                    showNotification(data.error || 'Login failed', 'error');
                 }
             } catch (error) {
-                resultContent.innerHTML = `An error occurred while processing the response: ${error.message}`;
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. ';
+                
+                if (error.message.includes('non-JSON response')) {
+                    errorMessage += 'Please make sure the Flask server is running on http://localhost:5000';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server. Please check if Flask app is running.';
+                } else {
+                    errorMessage += 'Please try again.';
+                }
+                
+                showNotification(errorMessage, 'error');
             } finally {
-                loadingSpinner.style.display = 'none';
-                analyzeButton.disabled = false;
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
             }
-        });
+        }
 
-        sendChatButton.addEventListener('click', async () => {
-            const query = chatInput.value.trim();
-            if (query === '') return;
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('myvakeel_user');
+            updateUserStatus();
+            showNotification('Logged out successfully', 'success');
+        }
 
-            // Display user message
-            chatWindow.innerHTML += `<div class="chat-message user-message"><p>${query}</p></div>`;
-            chatInput.value = '';
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
 
-            // Display loading message
-            chatWindow.innerHTML += `<div class="chat-message bot-message"><p class="loading">MyVakeel is thinking...</p></div>`;
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            sendChatButton.disabled = true;
+        // Analysis functions
+        async function analyzeFile() {
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select a file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading('file-loading', true);
+            analyzeFileBtn.disabled = true;
 
             try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': userId || 'anonymous'
-                    },
-                    body: JSON.stringify({ query: query })
-                });
+                // Try API route first, then fallback
+                let response;
+                try {
+                    response = await fetch('/api/analyze-file', {
+                        method: 'POST',
+                        headers: {
+                            'User-Email': currentUser.email
+                        },
+                        body: formData
+                    });
+                } catch (apiError) {
+                    response = await fetch('/analyze-file', {
+                        method: 'POST',
+                        headers: {
+                            'User-Email': currentUser.email
+                        },
+                        body: formData
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server error: Make sure Flask app is running properly');
+                }
 
                 const data = await response.json();
-                const lastBotMessage = chatWindow.querySelector('.bot-message:last-child p');
                 
-                if (data.error) {
-                    lastBotMessage.innerHTML = `Error: ${data.error}`;
-                } else if (response.ok) {
-                    lastBotMessage.innerHTML = data.response;
+                if (data.success) {
+                    analysisResults = data.result;
+                    displayResults(data.result);
+                    showNotification('Document analyzed successfully!', 'success');
                 } else {
-                    lastBotMessage.innerHTML = 'Something went wrong.';
+                    showNotification(data.error || 'Analysis failed', 'error');
                 }
             } catch (error) {
-                const lastBotMessage = chatWindow.querySelector('.bot-message:last-child p');
-                lastBotMessage.innerHTML = `An error occurred: ${error.message}`;
+                console.error('File analysis error:', error);
+                let errorMessage = 'Analysis failed. ';
+                
+                if (error.message.includes('Server error')) {
+                    errorMessage += 'Please check if Flask server is running on http://localhost:5000';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server.';
+                } else {
+                    errorMessage += 'Please try again.';
+                }
+                
+                showNotification(errorMessage, 'error');
             } finally {
-                sendChatButton.disabled = false;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
+                showLoading('file-loading', false);
+                analyzeFileBtn.disabled = false;
             }
-        });
-        
+        }
+
+        async function analyzeText() {
+            const text = textInput.value.trim();
+            if (!text) {
+                showNotification('Please enter some text to analyze', 'error');
+                return;
+            }
+
+            showLoading('text-loading', true);
+            analyzeTextBtn.disabled = true;
+
+            try {
+                let response;
+                try {
+                    response = await fetch('/api/analyze-text', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Email': currentUser ? currentUser.email : ''
+                        },
+                        body: JSON.stringify({ text })
+                    });
+                } catch (apiError) {
+                    response = await fetch('/analyze-text', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'User-Email': currentUser ? currentUser.email : ''
+                        },
+                        body: JSON.stringify({ text })
+                    });
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server error: Make sure Flask app is running properly');
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    analysisResults = data.result;
+                    displayResults(data.result);
+                    showNotification('Text analyzed successfully!', 'success');
+                } else {
+                    showNotification(data.error || 'Analysis failed', 'error');
+                }
+            } catch (error) {
+                console.error('Text analysis error:', error);
+                let errorMessage = 'Analysis failed. ';
+                
+                if (error.message.includes('Server error')) {
+                    errorMessage += 'Please check if Flask server is running.';
+                } else {
+                    errorMessage += 'Please try again.';
+                }
+                
+                showNotification(errorMessage, 'error');
+            } finally {
+                showLoading('text-loading', false);
+                analyzeTextBtn.disabled = false;
+            }
+        }
+
+        // Chat functions
+        async function sendChatMessage() {
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            // Add user message to chat
+            addMessageToChat(query, 'user');
+            chatInput.value = '';
+
+            // Show thinking message
+            const thinkingMessage = addMessageToChat('🤔 MyVakeel is thinking...', 'bot');
+            sendChatBtn.disabled = true;
+
+            try {
+                // Try API route first, then fallback
+                let response;
+                try {
+                    response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ query })
+                    });
+                } catch (apiError) {
+                    response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ query })
+                    });
+                }
+
+                // Remove thinking message first
+                thinkingMessage.remove();
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    addMessageToChat('❌ Server error: Please make sure Flask app is running on http://localhost:5000', 'bot');
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.response) {
+                    addMessageToChat(data.response, 'bot');
+                } else {
+                    addMessageToChat('Sorry, I encountered an error. Please try again.', 'bot');
+                }
+            } catch (error) {
+                // Remove thinking message
+                thinkingMessage.remove();
+                
+                console.error('Chat error:', error);
+                let errorMessage = '❌ ';
+                
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Cannot connect to server. Please check if Flask app is running on http://localhost:5000';
+                } else {
+                    errorMessage += 'Sorry, I encountered an error. Please try again.';
+                }
+                
+                addMessageToChat(errorMessage, 'bot');
+            } finally {
+                sendChatBtn.disabled = false;
+            }
+        }
+
+        function addMessageToChat(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}-message`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        // Results display functions
+        function displayResults(results) {
+            resultsContainer.style.display = 'block';
+            
+            // Display summary
+            if (results.summary) {
+                const summaryContent = document.getElementById('summary-content');
+                summaryContent.innerHTML = results.summary.map(point => `<p>• ${point}</p>`).join('');
+            }
+
+            // Display tip
+            if (results.tip) {
+                const tipContent = document.getElementById('tip-content');
+                tipContent.innerHTML = `<p>${results.tip}</p>`;
+            }
+
+            // Display risks
+            if (results.risks) {
+                const risksContent = document.getElementById('risks-content');
+                risksContent.innerHTML = results.risks.map(risk => `
+                    <div class="risk-item">
+                        <strong>Risk:</strong> ${risk.risk_explanation || risk.simplified_explanation}
+                        ${risk.clause || risk.original_text ? `<br><small><em>Clause: "${risk.clause || risk.original_text}"</em></small>` : ''}
+                    </div>
+                `).join('');
+            }
+
+            // Display timeline
+            if (results.timeline) {
+                const timelineContent = document.getElementById('timeline-content');
+                timelineContent.innerHTML = results.timeline.map(item => `
+                    <div class="timeline-item">
+                        <strong>${item.date || 'Important Date'}</strong><br>
+                        ${item.description || item.event || 'Important milestone'}
+                    </div>
+                `).join('');
+            }
+
+            // Create visual representation
+            if (results.mind_map_data || results.timeline_data) {
+                createVisualRepresentation(results);
+            }
+
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function switchTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Show/hide tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            document.getElementById(`tab-${tabName}`).style.display = 'block';
+        }
+
+        function createVisualRepresentation(results) {
+            const container = document.getElementById('visual-content');
+            container.innerHTML = '';
+
+            if (results.mind_map_data) {
+                createMindMap(container, results.mind_map_data);
+            } else if (results.timeline_data) {
+                createTimelineVisualization(container, results.timeline_data);
+            } else {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Visual representation will be generated based on document analysis</p>';
+            }
+        }
+
+        function createMindMap(container, data) {
+            // Simple mind map using D3
+            const width = container.offsetWidth;
+            const height = 400;
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Create nodes
+            const nodes = data.map((item, index) => ({
+                id: item.id || `node-${index}`,
+                label: item.label || item.concept || `Node ${index}`,
+                x: centerX + (Math.cos(index * 2 * Math.PI / data.length) * 100),
+                y: centerY + (Math.sin(index * 2 * Math.PI / data.length) * 100)
+            }));
+
+            // Draw connections
+            svg.selectAll('line')
+                .data(nodes.slice(1))
+                .enter()
+                .append('line')
+                .attr('x1', centerX)
+                .attr('y1', centerY)
+                .attr('x2', d => d.x)
+                .attr('y2', d => d.y)
+                .attr('stroke', '#cbd5e0')
+                .attr('stroke-width', 2);
+
+            // Draw nodes
+            svg.selectAll('circle')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 25)
+                .attr('fill', '#667eea')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 3);
+
+            // Add labels
+            svg.selectAll('text')
+                .data(nodes)
+                .enter()
+                .append('text')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y + 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-size', '12px')
+                .attr('font-weight', 'bold')
+                .text(d => d.label.substring(0, 8));
+        }
+
+        function createTimelineVisualization(container, data) {
+            container.innerHTML = `
+                <div style="padding: 1rem;">
+                    <h4>Timeline Visualization</h4>
+                    ${data.map((item, index) => `
+                        <div style="display: flex; align-items: center; margin: 1rem 0;">
+                            <div style="width: 20px; height: 20px; background: #667eea; border-radius: 50%; margin-right: 1rem;"></div>
+                            <div>
+                                <strong>${item.date}</strong><br>
+                                <span>${item.event}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function showLoading(elementId, show) {
+            const element = document.getElementById(elementId);
+            element.style.display = show ? 'block' : 'none';
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.background = type === 'success' ? '#48bb78' : '#f56565';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+        }
     </script>
 </body>
 </html>
