@@ -301,6 +301,91 @@ body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
+/* Admin Panel Specific Styles */
+.admin-container { 
+    max-width: 1400px; 
+    margin: 0 auto; 
+    padding: 2rem; 
+}
+
+.admin-header { 
+    background: linear-gradient(135deg, #667eea, #764ba2); 
+    color: white; 
+    padding: 2rem; 
+    border-radius: 15px; 
+    margin-bottom: 2rem; 
+    text-align: center; 
+}
+
+.status-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+    gap: 1rem; 
+    margin-bottom: 2rem; 
+}
+
+.status-card { 
+    background: white; 
+    padding: 1.5rem; 
+    border-radius: 15px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+    text-align: center; 
+}
+
+.status.online { 
+    background: #48bb78; 
+    color: white; 
+    padding: 0.5rem 1rem; 
+    border-radius: 20px; 
+    display: inline-block; 
+}
+
+.status.offline { 
+    background: #f56565; 
+    color: white; 
+    padding: 0.5rem 1rem; 
+    border-radius: 20px; 
+    display: inline-block; 
+}
+
+.data-table { 
+    background: white; 
+    border-radius: 15px; 
+    overflow: hidden; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+}
+
+.data-table table { 
+    width: 100%; 
+    border-collapse: collapse; 
+}
+
+.data-table th, .data-table td { 
+    padding: 1rem; 
+    text-align: left; 
+    border-bottom: 1px solid #e2e8f0; 
+}
+
+.data-table th { 
+    background: #f8fafc; 
+    font-weight: 600; 
+}
+
+.btn-group { 
+    margin: 1rem 0; 
+}
+
+.json-view { 
+    background: #2d3748; 
+    color: #e2e8f0; 
+    padding: 1rem; 
+    border-radius: 8px; 
+    overflow: auto; 
+    font-family: monospace; 
+    font-size: 0.9rem; 
+    max-height: 400px; 
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -381,7 +466,7 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .container {
+    .container, .admin-container {
         padding: 1rem;
     }
     
@@ -404,5 +489,13 @@ body {
     .btn {
         width: 100%;
         margin-top: 0.5rem;
+    }
+    
+    .status-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .results-grid {
+        grid-template-columns: 1fr;
     }
 }

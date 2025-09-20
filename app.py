@@ -33,7 +33,7 @@ app = Flask(__name__)
 CORS(app)
 
 # AI model configuration
-model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 # Global variables for Firebase
 db = None
@@ -337,9 +337,12 @@ def chat():
         2. Help users understand clauses and provisions
         3. Provide general guidance (not legal advice)
         4. Answer questions about insurance, contracts, and legal documents
+        5. Summarize articles, clauses, or terms when asked
+        6. Provide risk analysis tips
         
         Always include a brief disclaimer that you don't provide legal advice.
         Keep responses conversational, helpful, and under 300 words.
+        Use emojis occasionally to make responses friendly.
         
         User Question: {user_query}
         """
@@ -364,23 +367,23 @@ def analyze_document_with_ai(file_content, mime_type, filename):
     """Analyze document using AI"""
     try:
         prompt = """
-        You are an expert legal document analyzer. Analyze this document and provide:
+        You are an expert legal document analyzer. Analyze this document and provide comprehensive insights.
         
-        1. A concise summary of main points (3-5 bullet points)
-        2. Key dates, deadlines, or important timelines
-        3. Potential risks or concerning clauses
-        4. Important dependencies or relationships between sections
-        5. A practical tip for understanding this type of document
+        Please provide your analysis in JSON format with these keys:
         
-        Format your response as a JSON object with these keys:
-        - summary: array of main points
-        - timeline: array of important dates/deadlines with descriptions
-        - risks: array of objects with "clause" and "risk_explanation"
-        - dependencies: array of objects showing relationships between concepts
-        - tip: helpful advice string
-        - document_type: detected type of document
+        1. "summary": Array of 3-5 main points about the document
+        2. "document_type": What type of document this appears to be
+        3. "key_terms": Array of important legal/technical terms with simple explanations
+        4. "timeline": Array of important dates, deadlines, or time-sensitive items
+        5. "risks": Array of potential concerns or risks with explanations
+        6. "dependencies": Array of relationships between different sections/concepts
+        7. "tip": One practical tip for understanding this type of document
+        8. "important_clauses": Array of the most critical clauses to pay attention to
         
-        Be practical and user-friendly in your explanations.
+        Make all explanations simple and accessible to non-lawyers.
+        Focus on practical implications for the user.
+        
+        Return only valid JSON, no additional text.
         """
         
         prompt_parts = [prompt, {'mime_type': mime_type, 'data': file_content}]
@@ -414,15 +417,18 @@ def analyze_text_with_ai(text_content):
         
         Text to analyze: {text_content}
         
-        Provide:
-        1. summary: Main points in 3-5 bullets
-        2. key_terms: Important legal or technical terms with explanations
-        3. risks: Potential concerns or risks
-        4. timeline: Any mentioned dates or deadlines
-        5. tip: Practical advice
-        6. document_type: What type of content this appears to be
+        Provide analysis with these keys:
+        1. "summary": Main points in 3-5 bullets
+        2. "document_type": What type of content this appears to be
+        3. "key_terms": Important legal or technical terms with explanations
+        4. "risks": Potential concerns or risks
+        5. "timeline": Any mentioned dates or deadlines
+        6. "dependencies": Relationships between concepts
+        7. "tip": Practical advice for this type of content
+        8. "important_clauses": Most critical parts to focus on
         
-        Format as JSON with these exact keys.
+        Make explanations simple and user-friendly.
+        Return only valid JSON.
         """
         
         response = model.generate_content(prompt)
@@ -453,52 +459,69 @@ def generate_visual_representations(analysis_data):
         if 'dependencies' in analysis_data:
             mind_map_data = []
             for dep in analysis_data.get('dependencies', []):
-                mind_map_data.append({
-                    'id': dep.get('concept', 'Unknown'),
-                    'label': dep.get('concept', 'Unknown'),
-                    'parent': dep.get('relates_to', None),
-                    'description': dep.get('relationship', '')
-                })
+                if isinstance(dep, dict):
+                    mind_map_data.append({
+                        'id': dep.get('concept', dep.get('from', 'Unknown')),
+                        'label': dep.get('concept', dep.get('from', 'Unknown')),
+                        'parent': dep.get('relates_to', dep.get('to', None)),
+                        'description': dep.get('relationship', dep.get('description', ''))
+                    })
+                else:
+                    # Handle string format
+                    mind_map_data.append({
+                        'id': str(dep),
+                        'label': str(dep),
+                        'parent': None,
+                        'description': ''
+                    })
             visual_data['mind_map_data'] = mind_map_data
         
         # Generate timeline data
         if 'timeline' in analysis_data:
             timeline_data = []
             for item in analysis_data.get('timeline', []):
-                timeline_data.append({
-                    'date': item.get('date', 'TBD'),
-                    'event': item.get('description', item.get('event', 'Important Event')),
-                    'importance': item.get('importance', 'medium')
-                })
+                if isinstance(item, dict):
+                    timeline_data.append({
+                        'date': item.get('date', 'TBD'),
+                        'event': item.get('description', item.get('event', 'Important Event')),
+                        'importance': item.get('importance', 'medium')
+                    })
+                else:
+                    # Handle string format
+                    timeline_data.append({
+                        'date': 'TBD',
+                        'event': str(item),
+                        'importance': 'medium'
+                    })
             visual_data['timeline_data'] = timeline_data
         
         # Generate flowchart data for risks
         if 'risks' in analysis_data:
             flowchart_data = []
             for i, risk in enumerate(analysis_data.get('risks', [])):
-                flowchart_data.append({
-                    'id': f'risk_{i}',
-                    'type': 'risk',
-                    'title': risk.get('clause', f'Risk {i+1}'),
-                    'description': risk.get('risk_explanation', 'Potential concern'),
-                    'severity': risk.get('severity', 'medium')
-                })
+                if isinstance(risk, dict):
+                    flowchart_data.append({
+                        'id': f'risk_{i}',
+                        'type': 'risk',
+                        'title': risk.get('clause', risk.get('title', f'Risk {i+1}')),
+                        'description': risk.get('risk_explanation', risk.get('explanation', 'Potential concern')),
+                        'severity': risk.get('severity', 'medium')
+                    })
+                else:
+                    # Handle string format
+                    flowchart_data.append({
+                        'id': f'risk_{i}',
+                        'type': 'risk',
+                        'title': f'Risk {i+1}',
+                        'description': str(risk),
+                        'severity': 'medium'
+                    })
             visual_data['flowchart_data'] = flowchart_data
         
     except Exception as e:
         logger.error(f"Visual data generation error: {e}")
     
     return visual_data
-
-# --- ERROR HANDLERS ---
-
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({"error": "Endpoint not found"}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({"error": "Internal server error"}), 500
 
 # --- ADMIN ROUTES ---
 
@@ -586,9 +609,11 @@ def test_database():
             'file_name': 'test_document.pdf',
             'file_type': 'application/pdf',
             'analysis_result': {
-                'summary': ['This is a test document', 'Created for testing purposes'],
-                'risks': [{'clause': 'Test clause', 'risk_explanation': 'This is a test risk'}],
-                'tip': 'This is a test tip for users'
+                'summary': ['This is a test document', 'Created for testing purposes', 'Shows database connectivity'],
+                'risks': [{'clause': 'Test clause', 'risk_explanation': 'This is a test risk for demonstration'}],
+                'tip': 'This is a test tip for users to understand the platform',
+                'timeline': [{'date': '2024-01-01', 'event': 'Test deadline'}],
+                'document_type': 'Test Document'
             },
             'created_at': firestore.SERVER_TIMESTAMP,
             'analysis_id': 'test-analysis-001'
@@ -641,6 +666,16 @@ def view_database():
     except Exception as e:
         logger.error(f"Database view error: {e}")
         return jsonify({"error": f"Database view failed: {str(e)}"}), 500
+
+# --- ERROR HANDLERS ---
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Endpoint not found"}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"error": "Internal server error"}), 500
 
 # --- RUN SERVER ---
 

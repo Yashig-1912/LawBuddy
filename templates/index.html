@@ -9,7 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/vis-network.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -80,7 +79,14 @@
             
             <div class="chat-window" id="chat-window">
                 <div class="chat-message bot-message">
-                    <p>👋 Hello! I'm MyVakeel, your AI legal assistant. I can help you understand legal documents, explain terms, and provide general guidance. How can I help you today?</p>
+                    <p>👋 Hello! I'm MyVakeel, your AI legal assistant. I can help you:</p>
+                    <ul style="margin-top: 0.5rem;">
+                        <li>📄 Explain legal terms and clauses</li>
+                        <li>⚖️ Provide general legal guidance</li>
+                        <li>📋 Summarize articles or documents</li>
+                        <li>⚠️ Identify potential risks</li>
+                    </ul>
+                    <p style="margin-top: 0.5rem;"><strong>How can I help you today?</strong></p>
                 </div>
             </div>
             
@@ -93,14 +99,19 @@
         <!-- Results Container -->
         <div class="results-container" id="results-container">
             <div class="card">
-                <h2 class="card-title">Analysis Results</h2>
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/>
+                    </svg>
+                    Analysis Results
+                </h2>
                 
                 <!-- Tabs for different views -->
                 <div class="tab-container">
-                    <div class="tab active" data-tab="summary">Summary</div>
-                    <div class="tab" data-tab="risks">Risks</div>
-                    <div class="tab" data-tab="timeline">Timeline</div>
-                    <div class="tab" data-tab="visual">Visual</div>
+                    <div class="tab active" data-tab="summary">📋 Summary</div>
+                    <div class="tab" data-tab="risks">⚠️ Risks</div>
+                    <div class="tab" data-tab="timeline">📅 Timeline</div>
+                    <div class="tab" data-tab="visual">🎨 Visual</div>
                 </div>
 
                 <!-- Tab Contents -->
@@ -112,23 +123,47 @@
                         </div>
                         
                         <div class="result-card">
+                            <h3>📄 Document Type</h3>
+                            <div id="document-type-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
                             <h3>💡 Pro Tip</h3>
                             <div id="tip-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>🔑 Key Terms</h3>
+                            <div id="key-terms-content"></div>
                         </div>
                     </div>
                 </div>
 
                 <div id="tab-risks" class="tab-content" style="display: none;">
-                    <div class="result-card">
-                        <h3>⚠️ Identified Risks</h3>
-                        <div id="risks-content"></div>
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <h3>⚠️ Identified Risks</h3>
+                            <div id="risks-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>🚨 Important Clauses</h3>
+                            <div id="important-clauses-content"></div>
+                        </div>
                     </div>
                 </div>
 
                 <div id="tab-timeline" class="tab-content" style="display: none;">
-                    <div class="result-card">
-                        <h3>📅 Important Dates & Deadlines</h3>
-                        <div id="timeline-content"></div>
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <h3>📅 Important Dates & Deadlines</h3>
+                            <div id="timeline-content"></div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h3>🔗 Dependencies</h3>
+                            <div id="dependencies-content"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -145,16 +180,16 @@
     <!-- Login Modal -->
     <div class="login-modal" id="login-modal">
         <div class="modal-content">
-            <h2 style="margin-bottom: 1rem;">Login Required</h2>
+            <h2 style="margin-bottom: 1rem;">🔐 Login Required</h2>
             <p style="margin-bottom: 1.5rem; color: #666;">Please enter your email to save and access your document analyses.</p>
             
-            <div class="input-group">
-                <input type="email" class="form-input" id="email-input" placeholder="Enter your email address">
+            <div class="input-group" style="flex-direction: column;">
+                <input type="email" class="form-input" id="email-input" placeholder="Enter your email address" style="margin-bottom: 1rem;">
             </div>
             
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button class="btn" id="login-btn">Login</button>
-                <button class="btn btn-secondary" id="cancel-login-btn">Cancel</button>
+                <button class="btn" id="login-btn" style="flex: 1;">Login</button>
+                <button class="btn btn-secondary" id="cancel-login-btn" style="flex: 1;">Cancel</button>
             </div>
         </div>
     </div>
@@ -289,7 +324,7 @@
                         <path d="M9,16.17L4.83,12L3.41,13.41L9,19L21,7L19.59,5.59L9,16.17Z"/>
                     </svg>
                     <p>File selected: ${file.name}</p>
-                    <small>Ready to analyze</small>
+                    <small>Ready to analyze (${(file.size / 1024 / 1024).toFixed(2)} MB)</small>
                 `;
             }
         }
@@ -309,7 +344,7 @@
                 userStatus.innerHTML = `
                     <div style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; display: inline-block;">
                         ✅ Logged in as: ${currentUser.email}
-                        <button onclick="logout()" style="background: none; border: none; color: white; margin-left: 10px; cursor: pointer;">Logout</button>
+                        <button onclick="logout()" style="background: none; border: none; color: white; margin-left: 10px; cursor: pointer; text-decoration: underline;">Logout</button>
                     </div>
                 `;
             } else {
@@ -436,6 +471,7 @@
 
             showLoading('file-loading', true);
             analyzeFileBtn.disabled = true;
+            analyzeFileBtn.textContent = 'Analyzing...';
 
             try {
                 // Try API route first, then fallback
@@ -488,6 +524,7 @@
             } finally {
                 showLoading('file-loading', false);
                 analyzeFileBtn.disabled = false;
+                analyzeFileBtn.textContent = 'Analyze Document';
             }
         }
 
@@ -500,6 +537,7 @@
 
             showLoading('text-loading', true);
             analyzeTextBtn.disabled = true;
+            analyzeTextBtn.textContent = 'Analyzing...';
 
             try {
                 let response;
@@ -551,6 +589,7 @@
             } finally {
                 showLoading('text-loading', false);
                 analyzeTextBtn.disabled = false;
+                analyzeTextBtn.textContent = 'Analyze Text';
             }
         }
 
@@ -641,40 +680,104 @@
             // Display summary
             if (results.summary) {
                 const summaryContent = document.getElementById('summary-content');
-                summaryContent.innerHTML = results.summary.map(point => `<p>• ${point}</p>`).join('');
+                summaryContent.innerHTML = Array.isArray(results.summary) 
+                    ? results.summary.map(point => `<p style="margin-bottom: 0.5rem;">• ${point}</p>`).join('')
+                    : `<p>${results.summary}</p>`;
+            }
+
+            // Display document type
+            if (results.document_type) {
+                const docTypeContent = document.getElementById('document-type-content');
+                docTypeContent.innerHTML = `<p><strong>${results.document_type}</strong></p>`;
             }
 
             // Display tip
             if (results.tip) {
                 const tipContent = document.getElementById('tip-content');
-                tipContent.innerHTML = `<p>${results.tip}</p>`;
+                tipContent.innerHTML = `<p style="background: #f0f9ff; padding: 1rem; border-radius: 8px; border-left: 4px solid #0ea5e9;">${results.tip}</p>`;
+            }
+
+            // Display key terms
+            if (results.key_terms) {
+                const keyTermsContent = document.getElementById('key-terms-content');
+                keyTermsContent.innerHTML = Array.isArray(results.key_terms)
+                    ? results.key_terms.map(term => {
+                        if (typeof term === 'object') {
+                            return `<div style="margin-bottom: 1rem; padding: 0.5rem; background: #f8fafc; border-radius: 6px;">
+                                <strong>${term.term || term.name}:</strong> ${term.explanation || term.description}
+                            </div>`;
+                        }
+                        return `<p style="margin-bottom: 0.5rem;">• ${term}</p>`;
+                    }).join('')
+                    : `<p>${results.key_terms}</p>`;
             }
 
             // Display risks
             if (results.risks) {
                 const risksContent = document.getElementById('risks-content');
-                risksContent.innerHTML = results.risks.map(risk => `
-                    <div class="risk-item">
-                        <strong>Risk:</strong> ${risk.risk_explanation || risk.simplified_explanation}
-                        ${risk.clause || risk.original_text ? `<br><small><em>Clause: "${risk.clause || risk.original_text}"</em></small>` : ''}
-                    </div>
-                `).join('');
+                risksContent.innerHTML = Array.isArray(results.risks)
+                    ? results.risks.map(risk => {
+                        if (typeof risk === 'object') {
+                            return `<div class="risk-item">
+                                <strong>⚠️ ${risk.title || 'Risk'}:</strong> ${risk.risk_explanation || risk.explanation || risk.description}
+                                ${risk.clause ? `<br><small style="color: #666;"><em>Clause: "${risk.clause}"</em></small>` : ''}
+                            </div>`;
+                        }
+                        return `<div class="risk-item"><strong>⚠️ Risk:</strong> ${risk}</div>`;
+                    }).join('')
+                    : `<div class="risk-item">${results.risks}</div>`;
+            }
+
+            // Display important clauses
+            if (results.important_clauses) {
+                const clausesContent = document.getElementById('important-clauses-content');
+                clausesContent.innerHTML = Array.isArray(results.important_clauses)
+                    ? results.important_clauses.map(clause => `
+                        <div style="margin-bottom: 1rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                            ${typeof clause === 'object' ? `<strong>${clause.title}:</strong> ${clause.description}` : clause}
+                        </div>
+                    `).join('')
+                    : `<p>${results.important_clauses}</p>`;
             }
 
             // Display timeline
             if (results.timeline) {
                 const timelineContent = document.getElementById('timeline-content');
-                timelineContent.innerHTML = results.timeline.map(item => `
-                    <div class="timeline-item">
-                        <strong>${item.date || 'Important Date'}</strong><br>
-                        ${item.description || item.event || 'Important milestone'}
-                    </div>
-                `).join('');
+                timelineContent.innerHTML = Array.isArray(results.timeline)
+                    ? results.timeline.map(item => {
+                        if (typeof item === 'object') {
+                            return `<div class="timeline-item">
+                                <strong>📅 ${item.date || 'Important Date'}</strong><br>
+                                ${item.description || item.event || 'Important milestone'}
+                            </div>`;
+                        }
+                        return `<div class="timeline-item"><strong>📅</strong> ${item}</div>`;
+                    }).join('')
+                    : `<div class="timeline-item">${results.timeline}</div>`;
+            }
+
+            // Display dependencies
+            if (results.dependencies) {
+                const depContent = document.getElementById('dependencies-content');
+                depContent.innerHTML = Array.isArray(results.dependencies)
+                    ? results.dependencies.map(dep => {
+                        if (typeof dep === 'object') {
+                            return `<div style="margin-bottom: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #22c55e;">
+                                <strong>🔗 ${dep.concept || dep.from}:</strong> ${dep.relationship || dep.description}
+                                ${dep.relates_to ? `<br><small>→ Related to: ${dep.relates_to}</small>` : ''}
+                            </div>`;
+                        }
+                        return `<div style="margin-bottom: 0.5rem;">🔗 ${dep}</div>`;
+                    }).join('')
+                    : `<p>${results.dependencies}</p>`;
             }
 
             // Create visual representation
             if (results.mind_map_data || results.timeline_data) {
                 createVisualRepresentation(results);
+            } else {
+                // Create a simple visual from available data
+                createSimpleVisual(results);
             }
 
             // Scroll to results
@@ -695,17 +798,53 @@
             const container = document.getElementById('visual-content');
             container.innerHTML = '';
 
-            if (results.mind_map_data) {
+            if (results.mind_map_data && results.mind_map_data.length > 0) {
                 createMindMap(container, results.mind_map_data);
-            } else if (results.timeline_data) {
+            } else if (results.timeline_data && results.timeline_data.length > 0) {
                 createTimelineVisualization(container, results.timeline_data);
             } else {
-                container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Visual representation will be generated based on document analysis</p>';
+                createSimpleVisual(results);
             }
         }
 
+        function createSimpleVisual(results) {
+            const container = document.getElementById('visual-content');
+            let visualHtml = '<div style="padding: 2rem; text-align: center;">';
+
+            // Create a simple summary visualization
+            if (results.summary && Array.isArray(results.summary)) {
+                visualHtml += '<h4 style="margin-bottom: 1rem;">📊 Document Overview</h4>';
+                visualHtml += '<div style="display: grid; gap: 1rem; margin-bottom: 2rem;">';
+                
+                results.summary.forEach((point, index) => {
+                    const colors = ['#667eea', '#48bb78', '#ed8936', '#9f7aea', '#38b2ac'];
+                    const color = colors[index % colors.length];
+                    visualHtml += `
+                        <div style="background: ${color}20; border: 2px solid ${color}; padding: 1rem; border-radius: 8px; text-align: left;">
+                            <div style="width: 20px; height: 20px; background: ${color}; border-radius: 50%; display: inline-block; margin-right: 10px;"></div>
+                            ${point}
+                        </div>
+                    `;
+                });
+                visualHtml += '</div>';
+            }
+
+            // Add risk level visualization
+            if (results.risks && Array.isArray(results.risks)) {
+                visualHtml += '<h4 style="margin-bottom: 1rem;">⚠️ Risk Assessment</h4>';
+                visualHtml += `
+                    <div style="background: #fef2f2; border: 2px solid #f87171; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+                        <div style="font-size: 2rem; color: #dc2626;">${results.risks.length}</div>
+                        <div>Potential Risk${results.risks.length !== 1 ? 's' : ''} Identified</div>
+                    </div>
+                `;
+            }
+
+            visualHtml += '</div>';
+            container.innerHTML = visualHtml;
+        }
+
         function createMindMap(container, data) {
-            // Simple mind map using D3
             const width = container.offsetWidth;
             const height = 400;
 
@@ -720,14 +859,14 @@
             // Create nodes
             const nodes = data.map((item, index) => ({
                 id: item.id || `node-${index}`,
-                label: item.label || item.concept || `Node ${index}`,
-                x: centerX + (Math.cos(index * 2 * Math.PI / data.length) * 100),
-                y: centerY + (Math.sin(index * 2 * Math.PI / data.length) * 100)
+                label: item.label || item.concept || `Node ${index + 1}`,
+                x: centerX + (Math.cos(index * 2 * Math.PI / data.length) * 120),
+                y: centerY + (Math.sin(index * 2 * Math.PI / data.length) * 120)
             }));
 
-            // Draw connections
+            // Draw connections to center
             svg.selectAll('line')
-                .data(nodes.slice(1))
+                .data(nodes)
                 .enter()
                 .append('line')
                 .attr('x1', centerX)
@@ -737,45 +876,68 @@
                 .attr('stroke', '#cbd5e0')
                 .attr('stroke-width', 2);
 
-            // Draw nodes
-            svg.selectAll('circle')
-                .data(nodes)
-                .enter()
-                .append('circle')
-                .attr('cx', d => d.x)
-                .attr('cy', d => d.y)
-                .attr('r', 25)
+            // Draw center node
+            svg.append('circle')
+                .attr('cx', centerX)
+                .attr('cy', centerY)
+                .attr('r', 30)
                 .attr('fill', '#667eea')
                 .attr('stroke', '#fff')
                 .attr('stroke-width', 3);
 
-            // Add labels
-            svg.selectAll('text')
-                .data(nodes)
-                .enter()
-                .append('text')
-                .attr('x', d => d.x)
-                .attr('y', d => d.y + 5)
+            svg.append('text')
+                .attr('x', centerX)
+                .attr('y', centerY + 5)
                 .attr('text-anchor', 'middle')
                 .attr('fill', 'white')
                 .attr('font-size', '12px')
                 .attr('font-weight', 'bold')
-                .text(d => d.label.substring(0, 8));
+                .text('Document');
+
+            // Draw outer nodes
+            svg.selectAll('.outer-node')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('class', 'outer-node')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 25)
+                .attr('fill', '#48bb78')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+
+            // Add labels for outer nodes
+            svg.selectAll('.outer-label')
+                .data(nodes)
+                .enter()
+                .append('text')
+                .attr('class', 'outer-label')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y + 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-size', '10px')
+                .attr('font-weight', 'bold')
+                .text(d => d.label.substring(0, 8) + (d.label.length > 8 ? '...' : ''));
         }
 
         function createTimelineVisualization(container, data) {
             container.innerHTML = `
                 <div style="padding: 1rem;">
-                    <h4>Timeline Visualization</h4>
-                    ${data.map((item, index) => `
-                        <div style="display: flex; align-items: center; margin: 1rem 0;">
-                            <div style="width: 20px; height: 20px; background: #667eea; border-radius: 50%; margin-right: 1rem;"></div>
-                            <div>
-                                <strong>${item.date}</strong><br>
-                                <span>${item.event}</span>
+                    <h4 style="text-align: center; margin-bottom: 1rem;">📅 Timeline Visualization</h4>
+                    <div style="position: relative; padding: 1rem 0;">
+                        ${data.map((item, index) => `
+                            <div style="display: flex; align-items: center; margin: 1.5rem 0; position: relative;">
+                                <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; margin-right: 1rem; z-index: 2; position: relative;"></div>
+                                <div style="flex: 1; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                    <strong style="color: #4a5568;">${item.date || 'Important Date'}</strong><br>
+                                    <span style="color: #666;">${item.event || item.description || 'Important milestone'}</span>
+                                </div>
+                                ${index < data.length - 1 ? '<div style="position: absolute; left: 9px; top: 20px; width: 2px; height: 40px; background: #e2e8f0; z-index: 1;"></div>' : ''}
                             </div>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
                 </div>
             `;
         }
