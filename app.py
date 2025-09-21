@@ -12,6 +12,10 @@ import logging
 from datetime import datetime
 import mimetypes
 import base64
+import hashlib
+import secrets
+from datetime import datetime, timedelta
+import sys
 
 # --- SETUP ---
 
@@ -38,6 +42,167 @@ model = genai.GenerativeModel('gemini-2.0-flash-exp')
 # Global variables for Firebase
 db = None
 bucket = None
+
+def validate_environment():
+    """Comprehensive environment validation with helpful error messages"""
+    errors = []
+    warnings = []
+    config_status = {
+        'api_key': False,
+        'firebase_admin': False,
+        'firebase_storage': False,
+        'admin_credentials': False
+    }
+    
+    # Check API Key
+    api_key = os.getenv("API_KEY")
+    if not api_key:
+        errors.append("❌ API_KEY is missing - Required for Google Gemini AI")
+    elif not api_key.startswith('AI') or len(api_key) < 20:
+        warnings.append("⚠️ API_KEY format looks incorrect - Should start with 'AI' and be longer")
+    else:
+        config_status['api_key'] = True
+        logger.info("✅ API_KEY configured")
+    
+    # Check Firebase Admin SDK
+    firebase_admin_sdk = os.getenv("FIREBASE_ADMIN_SDK")
+    if not firebase_admin_sdk:
+        warnings.append("⚠️ FIREBASE_ADMIN_SDK not set - Database features will be limited")
+    else:
+        try:
+            firebase_config = json.loads(firebase_admin_sdk)
+            required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+            missing_fields = [field for field in required_fields if field not in firebase_config]
+            
+            if missing_fields:
+                errors.append(f"❌ FIREBASE_ADMIN_SDK missing fields: {', '.join(missing_fields)}")
+            else:
+                config_status['firebase_admin'] = True
+                logger.info("✅ Firebase Admin SDK configured")
+                
+        except json.JSONDecodeError:
+            errors.append("❌ FIREBASE_ADMIN_SDK is not valid JSON")
+        except Exception as e:
+            errors.append(f"❌ FIREBASE_ADMIN_SDK validation error: {str(e)}")
+    
+    # Check Firebase Storage Bucket
+    storage_bucket = os.getenv("FIREBASE_STORAGE_BUCKET")
+    if not storage_bucket:
+        warnings.append("⚠️ FIREBASE_STORAGE_BUCKET not set - File upload features will be limited")
+    elif not storage_bucket.endswith('.appspot.com'):
+        warnings.append("⚠️ FIREBASE_STORAGE_BUCKET should end with '.appspot.com'")
+    else:
+        config_status['firebase_storage'] = True
+        logger.info("✅ Firebase Storage configured")
+    
+    # Check Admin Credentials
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    admin_secret = os.getenv("ADMIN_SECRET_KEY")
+    
+    if not admin_username:
+        warnings.append("⚠️ ADMIN_USERNAME not set - Using default 'admin'")
+    if not admin_password:
+        warnings.append("⚠️ ADMIN_PASSWORD not set - Using default (INSECURE!)")
+    elif admin_password == 'changeme123' or admin_password == '123456':
+        warnings.append("🚨 ADMIN_PASSWORD is using default value - CHANGE IT!")
+    if not admin_secret:
+        warnings.append("⚠️ ADMIN_SECRET_KEY not set - Using default (INSECURE!)")
+    
+    if admin_username and admin_password and admin_secret:
+        config_status['admin_credentials'] = True
+        logger.info("✅ Admin credentials configured")
+    
+    # Print results
+    print("\n" + "="*60)
+    print("🔧 MyVakeel Environment Validation Report")
+    print("="*60)
+    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print()
+    
+    # Configuration Status
+    print("📋 Configuration Status:")
+    for component, status in config_status.items():
+        icon = "✅" if status else "❌"
+        print(f"  {icon} {component.replace('_', ' ').title()}")
+    print()
+    
+    # Errors (Critical - will prevent startup)
+    if errors:
+        print("🚨 CRITICAL ERRORS (Must fix to run):")
+        for error in errors:
+            print(f"  {error}")
+        print()
+    
+    # Warnings (Important but not blocking)
+    if warnings:
+        print("⚠️  WARNINGS (Recommended to fix):")
+        for warning in warnings:
+            print(f"  {warning}")
+        print()
+    
+    # Success message or instructions
+    if not errors:
+        features_count = sum(config_status.values())
+        print(f"🎉 Environment validation passed! {features_count}/4 features available")
+        if warnings:
+            print("💡 Fix warnings above for full functionality")
+    else:
+        print("❌ Environment validation failed!")
+        print("\n📝 Quick Setup Guide:")
+        print("1. Copy .env.example to .env")
+        print("2. Add your Google Gemini API key to API_KEY")
+        print("3. Add Firebase Admin SDK JSON to FIREBASE_ADMIN_SDK")
+        print("4. Set secure admin credentials")
+        print("\n🔗 See README.md for detailed instructions")
+    
+    print("="*60 + "\n")
+    
+    return len(errors) == 0, config_status
+def startup_check():
+    """Run comprehensive startup checks"""
+    print("🚀 Starting MyVakeel Enhanced Platform...")
+    
+    
+    
+    # Validate environment
+    is_valid, config_status = validate_environment()
+    
+    if not is_valid:
+        print("\n💡 Need help setting up? Check these resources:")
+        print("📖 README.md - Complete setup guide")
+        print("⚙️  .env.example - Example configuration file")
+        print("🌐 https://github.com/your-repo/myvakeel - Documentation")
+        print("\n⚠️  Continuing with limited functionality...")
+    
+    # Test critical components
+    test_results = {}
+    
+    # Test AI Connection
+    if config_status['api_key']:
+        try:
+            genai.configure(api_key=os.getenv("API_KEY"))
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            test_response = model.generate_content("Test connection")
+            test_results['ai'] = True
+            logger.info("✅ AI connection test passed")
+        except Exception as e:
+            test_results['ai'] = False
+            logger.warning(f"⚠️ AI connection test failed: {e}")
+    
+    # Test Firebase Connection
+    if config_status['firebase_admin']:
+        try:
+            if initialize_firebase():
+                test_results['firebase'] = True
+                logger.info("✅ Firebase connection test passed")
+            else:
+                test_results['firebase'] = False
+        except Exception as e:
+            test_results['firebase'] = False
+            logger.warning(f"⚠️ Firebase connection test failed: {e}")
+    
+    return is_valid, config_status, test_results
 
 # --- Firebase Admin SDK Setup ---
 def initialize_firebase():
@@ -1384,6 +1549,133 @@ def enhance_with_bilingual_terms(text, target_language):
         enhanced_text += "\n\n📚 *Key terms are provided in both English and your local language for better understanding.*"
     
     return enhanced_text
+admin_sessions = {}
+
+def hash_password(password):
+    """Hash password with salt"""
+    salt = os.getenv('ADMIN_SECRET_KEY', 'default_salt')
+    return hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000).hex()
+
+def verify_admin_session(session_token):
+    """Verify admin session token"""
+    if not session_token or session_token not in admin_sessions:
+        return False
+    
+    session = admin_sessions[session_token]
+    if datetime.now() > session['expires']:
+        del admin_sessions[session_token]
+        return False
+    
+    return True
+
+@app.route('/api/admin-login', methods=['POST'])
+def admin_login():
+    """Secure admin login endpoint"""
+    try:
+        data = request.json
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+        
+        # Get credentials from environment
+        admin_username = os.getenv('ADMIN_USERNAME', 'admin')
+        admin_password_hash = hash_password(os.getenv('ADMIN_PASSWORD', 'changeme123'))
+        
+        # Verify credentials
+        if username == admin_username and hash_password(password) == admin_password_hash:
+            # Create session token
+            session_token = secrets.token_urlsafe(32)
+            expires = datetime.now() + timedelta(hours=2)  # 2-hour session
+            
+            admin_sessions[session_token] = {
+                'username': username,
+                'expires': expires,
+                'ip': request.remote_addr,
+                'created': datetime.now()
+            }
+            
+            logger.info(f"Admin login successful for {username} from {request.remote_addr}")
+            
+            return jsonify({
+                'success': True,
+                'session_token': session_token,
+                'expires': expires.isoformat(),
+                'message': 'Login successful'
+            })
+        else:
+            logger.warning(f"Failed admin login attempt for {username} from {request.remote_addr}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid credentials'
+            }), 401
+            
+    except Exception as e:
+        logger.error(f"Admin login error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Login failed'
+        }), 500
+
+@app.route('/api/admin-verify', methods=['POST'])
+def admin_verify():
+    """Verify admin session"""
+    try:
+        data = request.json
+        session_token = data.get('session_token', '')
+        
+        if verify_admin_session(session_token):
+            session = admin_sessions[session_token]
+            return jsonify({
+                'valid': True,
+                'username': session['username'],
+                'expires': session['expires'].isoformat()
+            })
+        else:
+            return jsonify({'valid': False}), 401
+            
+    except Exception as e:
+        logger.error(f"Admin verify error: {e}")
+        return jsonify({'valid': False}), 500
+
+@app.route('/api/admin-logout', methods=['POST'])
+def admin_logout():
+    """Admin logout"""
+    try:
+        data = request.json
+        session_token = data.get('session_token', '')
+        
+        if session_token in admin_sessions:
+            del admin_sessions[session_token]
+            logger.info("Admin logged out successfully")
+        
+        return jsonify({'success': True, 'message': 'Logged out successfully'})
+        
+    except Exception as e:
+        logger.error(f"Admin logout error: {e}")
+        return jsonify({'success': False, 'error': 'Logout failed'}), 500
+
+# Decorator for protected admin routes
+def admin_required(f):
+    """Decorator to protect admin routes"""
+    def decorated_function(*args, **kwargs):
+        session_token = request.headers.get('Admin-Session-Token')
+        if not verify_admin_session(session_token):
+            return jsonify({'error': 'Admin authentication required'}), 401
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
+# Protect existing admin routes
+@app.route('/admin/users')
+@admin_required
+def admin_users_protected():
+    """Get all users for admin (protected)"""
+    return admin_users()  # Your existing function
+
+@app.route('/admin/analyses')
+@admin_required
+def admin_analyses_protected():
+    """Get all analyses for admin (protected)"""
+    return admin_analyses()  # Your existing function
 # --- ERROR HANDLERS ---
 
 @app.errorhandler(404)
@@ -1406,27 +1698,32 @@ def internal_error(error):
 # --- RUN SERVER ---
 
 if __name__ == '__main__':
-    # Validate required environment variables
-    required_vars = ['API_KEY']
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    # Run startup checks
+    env_valid, config, tests = startup_check()
     
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {missing_vars}")
-        exit(1)
-    
-    # Get port from environment (Render sets this automatically)
+    # Get port and environment
     port = int(os.environ.get('PORT', 5000))
+    is_production = os.environ.get('ENVIRONMENT') == 'production' or os.environ.get('RENDER') is not None
+    debug_mode = not is_production
     
-    # Check if running in production (Render sets RENDER environment variable)
-    is_production = os.environ.get('RENDER') is not None
-    debug_mode = not is_production  # Debug only in development
-    
-    logger.info("Starting MyVakeel Enhanced Platform v2.0...")
-    logger.info(f"Environment: {'Production' if is_production else 'Development'}")
-    logger.info(f"Port: {port}")
-    logger.info(f"Debug mode: {debug_mode}")
-    logger.info(f"Firebase available: {firebase_available}")
-    logger.info(f"Storage available: {bucket is not None}")
+    # Final startup message
+    features_available = sum(config.values())
+    print(f"\n🎯 Starting with {features_available}/4 features enabled")
+    print(f"🌍 Environment: {'Production' if is_production else 'Development'}")
+    print(f"🔧 Debug mode: {debug_mode}")
+    print(f"🚪 Port: {port}")
+    print(f"📊 Health endpoint: http://localhost:{port}/api/health")
+    print(f"🏠 Main app: http://localhost:{port}/")
+    print("="*50)
     
     # Run the Flask app
-    app.run(debug=debug_mode, host='0.0.0.0', port=port)
+    try:
+        app.run(debug=debug_mode, host='0.0.0.0', port=port)
+    except Exception as e:
+        logger.error(f"Failed to start server: {e}")
+        print(f"\n❌ Server startup failed: {e}")
+        print("💡 Common fixes:")
+        print("- Check if port is already in use")
+        print("- Verify environment variables are set")
+        print("- Check file permissions")
+        sys.exit(1)

@@ -106,6 +106,7 @@ body {
 .bot-message {
     background: white;
     border: 1px solid #e2e8f0;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode';
 }
 
 .input-group {
@@ -1269,7 +1270,7 @@ body {
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     .container, .admin-container {
-        padding: 1rem;
+        padding: 1rem !important;
     }
     
     .main-grid {
@@ -1308,7 +1309,8 @@ body {
     }
     
     .status-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
     }
     
     .voice-controls {
@@ -1347,6 +1349,20 @@ body {
         right: 20px;
         left: 20px;
         max-width: none;
+    }
+    .data-table {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .data-table table {
+        min-width: 600px !important;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem 0.5rem !important;
+        font-size: 0.9rem !important;
     }
 }
 
@@ -1657,18 +1673,70 @@ body {
     }
     
     .voice-input-btn {
-        margin: 0 0.25rem;
-        padding: 0.6rem;
-        font-size: 1rem;
+       min-width: 48px !important;
+        min-height: 48px !important;
+        padding: 0.8rem !important;
+        font-size: 1.3rem !important;
+        border-radius: 12px !important;
+        margin: 0 0.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        touch-action: manipulation; /* Prevents zoom on double-tap */
     }
     
+    .voice-input-btn:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+    
+    .input-group.voice-enabled {
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+    
+    .input-group.voice-enabled .form-input {
+        flex: 1 !important;
+        min-height: 48px !important;
+    }
+    
+    .input-group.voice-enabled .btn {
+        min-height: 48px !important;
+        min-width: 60px !important;
+        padding: 0 1rem !important;
+    }
+    
+    /* Floating voice widget improvements */
+    .floating-voice-widget {
+        width: 56px !important;
+        height: 56px !important;
+        bottom: 20px !important;
+        right: 20px !important;
+        font-size: 1.4rem !important;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6) !important;
+    }
+        
     .admin-modal .modal-content {
         width: 95%;
         padding: 1.5rem;
     }
     
     .voice-status {
-        padding: 0.75rem;
+        padding: 1rem !important;
+        border-radius: 15px !important;
+        margin: 0.75rem 0 !important;
+    }
+    
+    .voice-indicator {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .voice-text {
+        font-size: 0.95rem !important;
+        padding: 0.75rem !important;
+        line-height: 1.4 !important;
     }
 }
 
@@ -1688,11 +1756,80 @@ body {
     }
     
     .input-group.voice-enabled {
-        flex-wrap: wrap;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .voice-controls-row {
+        display: flex !important;
+        gap: 0.5rem !important;
+    }
+    
+    .voice-controls-row .voice-input-btn,
+    .voice-controls-row .btn {
+        flex: 1 !important;
     }
     
     .voice-input-btn {
-        order: 1;
-        margin-bottom: 0.5rem;
+         min-width: 52px !important;
+        min-height: 52px !important;
+        font-size: 1.4rem !important;
+    }
+    
+    .floating-voice-widget {
+        width: 60px !important;
+        height: 60px !important;
+        font-size: 1.5rem !important;
+    }
+    
+}
+/* ===== LOADING AND ERROR STATES ===== */
+.enhanced-error-container {
+    animation: slideInUp 0.4s ease !important;
+}
+
+.enhanced-error-container .error-actions {
+    flex-wrap: wrap !important;
+}
+
+@media (max-width: 480px) {
+    .enhanced-error-container .error-actions {
+        flex-direction: column !important;
+    }
+    
+    .enhanced-error-container .error-actions .btn {
+        width: 100% !important;
+        margin: 0.25rem 0 !important;
+    }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+.voice-input-btn:focus,
+.floating-voice-widget:focus {
+    outline: 3px solid #10b981 !important;
+    outline-offset: 2px !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .voice-input-btn {
+        border: 2px solid currentColor !important;
+    }
+    
+    .voice-status {
+        border: 2px solid #10b981 !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .voice-input-btn,
+    .floating-voice-widget {
+        animation: none !important;
+        transition: none !important;
+    }
+    
+    .voice-input-btn:active {
+        transform: none !important;
     }
 }

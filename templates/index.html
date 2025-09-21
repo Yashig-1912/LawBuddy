@@ -126,7 +126,7 @@
                 </svg>
                 Legal Assistant Chat
             </h2>
-            <p>Ask questions about legal terms, clauses, or get general guidance</p>
+            <p>Ask questions about legal terms, clauses, or get general guidance with voice support</p>
             
             <div class="chat-window" id="chat-window">
                 <div class="chat-message bot-message">
@@ -136,18 +136,15 @@
                         <li>⚖️ Provide general legal guidance</li>
                         <li>📋 Summarize articles or documents</li>
                         <li>⚠️ Identify potential risks</li>
-                        <li>🎤 Read analysis results aloud</li>
+                        <li>🎤 Listen to your voice input and read responses aloud</li>
                     </ul>
                     <p style="margin-top: 0.5rem;"><strong>How can I help you today?</strong></p>
                 </div>
             </div>
             
-            <div class="input-group">
-                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms, clauses, or analysis results..." maxlength="500">
-                <button class="btn" id="send-chat-btn">Send</button>
-            </div>
+            <!-- SINGLE UNIFIED INPUT WITH VOICE -->
             <div class="input-group voice-enabled">
-                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms...">
+                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms, clauses, or analysis results..." maxlength="500">
                 <button class="voice-input-btn" id="voice-input-btn" onclick="toggleVoiceInput()" title="Voice Input">
                     🎤
                 </button>
@@ -354,99 +351,839 @@
         let currentLanguage = 'en';
         let isListening = false;
         let recognition = null;
+        let apimanager=null;
+        let languageManager=null;
         let conversationHistory = {};
         let isAdminLoggedIn = false;
+        let adminSessionToken = null;
+        let adminSessionExpiry = null;
+        let fileInput, fileUploadArea, textInput, analyzeFileBtn, analyzeTextBtn;
+        let chatInput, sendChatBtn, chatWindow, resultsContainer;
+        let loginModal, emailInput, loginBtn, cancelLoginBtn;
+        let voicePlayer, floatingVoice;
+        const ENHANCED_LANGUAGE_CONFIG = {
+            'en': { 
+                name: 'English', 
+                nativeName: 'English',
+                code: 'en-US', 
+                voice: 'en-US',
+                rtl: false,
+                ui: {
+                    chatPlaceholder: 'Ask about legal terms, clauses, or analysis results...',
+                    analyzeText: 'Analyze Text',
+                    analyzeDocument: 'Analyze Document',
+                    listening: 'Listening...',
+                    voiceNotSupported: 'Voice input not supported in this browser',
+                    speakingRate: 'Normal speed'
+                }
+            },
+            'hi': { 
+                name: 'Hindi', 
+                nativeName: 'हिंदी',
+                code: 'hi-IN', 
+                voice: 'hi-IN',
+                rtl: false,
+                ui: {
+                    chatPlaceholder: 'कानूनी शब्दों, धाराओं या विश्लेषण के बारे में पूछें...',
+                    analyzeText: 'पाठ का विश्लेषण करें',
+                    analyzeDocument: 'दस्तावेज़ का विश्लेषण करें',
+                    listening: 'सुन रहा है...',
+                    voiceNotSupported: 'इस ब्राउज़र में वॉइस इनपुट समर्थित नहीं है',
+                    speakingRate: 'सामान्य गति'
+                }
+            },
+            'ta': { 
+                name: 'Tamil', 
+                nativeName: 'தமிழ்',
+                code: 'ta-IN', 
+                voice: 'ta-IN',
+                rtl: false,
+                ui: {
+                    chatPlaceholder: 'சட்ட விதிமுறைகள், பிரிவுகள் அல்லது பகுப்பாய்வு பற்றி கேளுங்கள்...',
+                    analyzeText: 'உரையை பகுப்பாய்வு செய்யுங்கள்',
+                    analyzeDocument: 'ஆவணத்தை பகுப்பாய்வு செய்யுங்கள்',
+                    listening: 'கேட்டுக்கொண்டிருக்கிறது...',
+                    voiceNotSupported: 'இந்த உலாவியில் குரல் உள்ளீடு ஆதரிக்கப்படவில்லை',
+                    speakingRate: 'சாதாரண வேகம்'
+                }
+            },
+            'te': { 
+                name: 'Telugu', 
+                nativeName: 'తెలుగు',
+                code: 'te-IN', 
+                voice: 'te-IN',
+                rtl: false,
+                ui: {
+                    chatPlaceholder: 'చట్టపరమైన నిబంధనలు, నిబంధనలు లేదా విశ్లేషణ గురించి అడగండి...',
+                    analyzeText: 'వచనాన్ని విశ్లేషించండి',
+                    analyzeDocument: 'పత్రాన్ని విశ్లేషించండి',
+                    listening: 'వింటున్నది...',
+                    voiceNotSupported: 'ఈ బ్రౌజర్‌లో వాయిస్ ఇన్‌పుట్ మద్దతు లేదు',
+                    speakingRate: 'సాధారణ వేగం'
+                }
+            }
+            // Add other languages following the same pattern...
+        };
+        const SUPPORTED_LANGUAGES = ENHANCED_LANGUAGE_CONFIG;
+        // === UNIFIED LANGUAGE MANAGER ===
+        class LanguageManager {
+            constructor() {
+                this.currentLanguage = 'en';
+                this.callbacks = [];
+                this.initializeFromStorage();
+            }
+            
+            initializeFromStorage() {
+                const saved = localStorage.getItem('myvakeel_language');
+                if (saved && ENHANCED_LANGUAGE_CONFIG[saved]) {
+                    this.currentLanguage = saved;
+                }
+                this.updateAllLanguageSettings();
+            }
+            
+            changeLanguage(langCode) {
+                if (!ENHANCED_LANGUAGE_CONFIG[langCode]) {
+                    console.error(`Language ${langCode} not supported`);
+                    return false;
+                }
+                
+                this.currentLanguage = langCode;
+                localStorage.setItem('myvakeel_language', langCode);
+                
+                this.updateAllLanguageSettings();
+                this.notifyCallbacks(langCode);
+                
+                showNotification(`Language changed to ${ENHANCED_LANGUAGE_CONFIG[langCode].nativeName}`, 'success');
+                return true;
+            }
+            
+            updateAllLanguageSettings() {
+                const config = ENHANCED_LANGUAGE_CONFIG[this.currentLanguage];
+                
+                // Update UI elements
+                this.updateUIElements(config);
+                
+                // Update voice synthesis
+                this.updateVoiceSettings(config);
+                
+                // Update speech recognition
+                this.updateSpeechRecognition(config);
+                
+                // Update HTML lang attribute
+                document.documentElement.lang = config.code.split('-')[0];
+                
+                // Update text direction for RTL languages
+                document.body.dir = config.rtl ? 'rtl' : 'ltr';
+            }
+            
+            updateUIElements(config) {
+                const elements = {
+                    'chat-input': 'placeholder',
+                    'text-input': 'placeholder'
+                };
+                
+                Object.entries(elements).forEach(([id, attr]) => {
+                    const element = document.getElementById(id);
+                    if (element && config.ui.chatPlaceholder) {
+                        element[attr] = config.ui.chatPlaceholder;
+                    }
+                });
+                
+                // Update button texts
+                const analyzeTextBtn = document.getElementById('analyze-text-btn');
+                const analyzeFileBtn = document.getElementById('analyze-file-btn');
+                
+                if (analyzeTextBtn && !analyzeTextBtn.disabled) {
+                    analyzeTextBtn.textContent = config.ui.analyzeText;
+                }
+                
+                if (analyzeFileBtn && !analyzeFileBtn.disabled) {
+                    analyzeFileBtn.textContent = config.ui.analyzeDocument;
+                }
+                
+                // Update language selector
+                const languageSelect = document.getElementById('language-select');
+                if (languageSelect) {
+                    languageSelect.value = this.currentLanguage;
+                }
+            }
+            
+            updateVoiceSettings(config) {
+                const voiceLanguageSelect = document.getElementById('voice-language');
+                if (voiceLanguageSelect) {
+                    // Map to closest available voice
+                    const voiceMappings = {
+                        'en': 'en-US',
+                        'hi': 'hi-IN',
+                        'ta': 'ta-IN',
+                        'te': 'te-IN',
+                        'bn': 'bn-IN',
+                        'mr': 'mr-IN',
+                        'gu': 'gu-IN',
+                        'kn': 'kn-IN'
+                    };
+                    
+                    const voiceCode = voiceMappings[this.currentLanguage] || 'en-US';
+                    voiceLanguageSelect.value = voiceCode;
+                }
+            }
+            
+            updateSpeechRecognition(config) {
+                if (recognition) {
+                    recognition.lang = config.code;
+                }
+            }
+            
+            getCurrentConfig() {
+                return ENHANCED_LANGUAGE_CONFIG[this.currentLanguage];
+            }
+            
+            onLanguageChange(callback) {
+                this.callbacks.push(callback);
+            }
+            
+            notifyCallbacks(langCode) {
+                this.callbacks.forEach(callback => {
+                    try {
+                        callback(langCode, ENHANCED_LANGUAGE_CONFIG[langCode]);
+                    } catch (error) {
+                        console.error('Language callback error:', error);
+                    }
+                });
+            }
+        }
+        // === API MANAGER (fixed FormData handling + tolerant JSON parsing) ===
+        class APIManager {
+            constructor() {
+                this.baseURL = this.detectBaseURL();
+                this.retryAttempts = 2;
+                this.retryDelay = 1000; // 1 second
+            }
+
+            detectBaseURL() {
+                const { protocol, hostname, port } = window.location;
+                if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168.')) {
+                    // If you open frontend via a file:// URL, default to 5000
+                    return `${protocol}//${hostname}:${port || 5000}`;
+                }
+                return window.location.origin;
+            }
+
+            async makeRequest(endpoint, options = {}) {
+                const url = `${this.baseURL}/api${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+
+                // Default headers; we'll remove Content-Type if sending FormData
+                const defaultOptions = {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                                ...options.headers
+                            }
+                        };
+
+                // Merge but do not mutate original
+                const finalOptions = { ...defaultOptions, ...options };
+                finalOptions.headers = { ...(defaultOptions.headers || {}), ...(options.headers || {}) };
+
+                // If `body` is FormData, delete Content-Type so the browser sets multipart boundary correctly
+                if (finalOptions.body instanceof FormData) {
+                    delete finalOptions.headers['Content-Type'];
+                }
+
+                for (let attempt = 0; attempt <= this.retryAttempts; attempt++) {
+                    try {
+                        const response = await fetch(url, finalOptions);
+
+                        // Try to parse JSON if possible, but tolerate non-JSON responses
+                        const contentType = response.headers.get('content-type') || '';
+                        let payload = null;
+                        if (contentType.includes('application/json')) {
+                            payload = await response.json().catch(() => null);
+                        } else {
+                            // try text fallback
+                            const text = await response.text().catch(() => null);
+                            // if text looks like JSON try to parse
+                            try { payload = text ? JSON.parse(text) : null; } catch { payload = text; }
+                        }
+
+                        if (!response.ok) {
+                            const errMsg = (payload && payload.error) ? payload.error : `Server error ${response.status}`;
+                            // Wrap as APIError so caller can handle status codes
+                            throw new APIError(errMsg, response.status, payload);
+                        }
+
+                        return payload;
+                    } catch (error) {
+                        // Don't retry on client errors (4xx)
+                        if (error instanceof APIError && error.status >= 400 && error.status < 500) {
+                            throw error;
+                        }
+                        if (attempt === this.retryAttempts) throw error;
+                        // exponential backoff
+                        await this.sleep(this.retryDelay * (attempt + 1));
+                    }
+                }
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        
+        // Custom API Error class
+        class APIError extends Error {
+            constructor(message, status, data) {
+                super(message);
+                this.name = 'APIError';
+                this.status = status;
+                this.data = data;
+            }
+        }
+        
+        class ConnectionMonitor {
+            constructor() {
+                this.isOnline = navigator.onLine;
+                this.quality = 'unknown';
+                this.setupEventListeners();
+                this.startMonitoring();
+            }
+            
+            setupEventListeners() {
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    showNotification('Connection restored', 'success');
+                    this.updateConnectionIndicator();
+                });
+                
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                    showNotification('Connection lost - some features may not work', 'warning');
+                    this.updateConnectionIndicator();
+                });
+            }
+            
+            async startMonitoring() {
+                setInterval(async () => {
+                    if (this.isOnline) {
+                        await this.checkConnectionQuality();
+                    }
+                }, 30000); // Check every 30 seconds
+            }
+            
+            async checkConnectionQuality() {
+                const start = performance.now();
+                try {
+                    await checkHealthAPI();
+                    const duration = performance.now() - start;
+                    
+                    if (duration < 500) {
+                        this.quality = 'excellent';
+                    } else if (duration < 1000) {
+                        this.quality = 'good';
+                    } else if (duration < 2000) {
+                        this.quality = 'fair';
+                    } else {
+                        this.quality = 'poor';
+                    }
+                } catch (error) {
+                    this.quality = 'offline';
+                }
+                
+                this.updateConnectionIndicator();
+            }
+            
+            updateConnectionIndicator() {
+                const indicator = document.querySelector('.connection-indicator');
+                if (indicator) {
+                    const colors = {
+                        excellent: '#10b981',
+                        good: '#34d399',
+                        fair: '#fbbf24',
+                        poor: '#f87171',
+                        offline: '#ef4444'
+                    };
+                    
+                    indicator.style.background = colors[this.quality] || '#6b7280';
+                    indicator.title = `Connection: ${this.quality}`;
+                }
+            }
+        }
 
         // DOM elements
-        const fileInput = document.getElementById('file-input');
-        const fileUploadArea = document.getElementById('file-upload-area');
-        const textInput = document.getElementById('text-input');
-        const analyzeFileBtn = document.getElementById('analyze-file-btn');
-        const analyzeTextBtn = document.getElementById('analyze-text-btn');
-        const chatInput = document.getElementById('chat-input');
-        const sendChatBtn = document.getElementById('send-chat-btn');
-        const chatWindow = document.getElementById('chat-window');
-        const resultsContainer = document.getElementById('results-container');
-        const loginModal = document.getElementById('login-modal');
-        const emailInput = document.getElementById('email-input');
-        const loginBtn = document.getElementById('login-btn');
-        const cancelLoginBtn = document.getElementById('cancel-login-btn');
-        const voicePlayer = document.getElementById('voice-player');
-        const floatingVoice = document.getElementById('floating-voice');
-        const SUPPORTED_LANGUAGES = {
-            'en': { name: 'English', code: 'en-US', voice: 'en-US' },
-            'hi': { name: 'हिंदी', code: 'hi-IN', voice: 'hi-IN' },
-            'ta': { name: 'தமிழ்', code: 'ta-IN', voice: 'ta-IN' },
-            'te': { name: 'తెలుగు', code: 'te-IN', voice: 'te-IN' },
-            'bn': { name: 'বাংলা', code: 'bn-IN', voice: 'bn-IN' },
-            'mr': { name: 'मराठी', code: 'mr-IN', voice: 'mr-IN' },
-            'gu': { name: 'ગુજરાતી', code: 'gu-IN', voice: 'gu-IN' },
-            'kn': { name: 'ಕನ್ನಡ', code: 'kn-IN', voice: 'kn-IN' }
+        
+       
+        const ERROR_MESSAGES = {
+            'network_error': {
+                title: 'Connection Problem',
+                message: 'Cannot connect to the server. Please check your internet connection.',
+                suggestions: [
+                    'Check if your internet is working',
+                    'Try refreshing the page',
+                    'Contact support if the problem continues'
+                ]
+            },
+            'server_error': {
+                title: 'Server Issue',
+                message: 'Our servers are having trouble processing your request.',
+                suggestions: [
+                    'Please try again in a few moments',
+                    'Try a smaller file if uploading',
+                    'Contact support if the issue persists'
+                ]
+            },
+            'file_too_large': {
+                title: 'File Too Big',
+                message: 'Your file is larger than our 10MB limit.',
+                suggestions: [
+                    'Try compressing your PDF file',
+                    'Split large documents into smaller parts',
+                    'Use the text analysis feature instead'
+                ]
+            },
+            'invalid_file': {
+                title: 'File Not Supported',
+                message: 'We can only analyze PDF files, images (JPG, PNG), and text files.',
+                suggestions: [
+                    'Convert your document to PDF format',
+                    'Take a clear photo of paper documents',
+                    'Copy and paste text into the text analyzer'
+                ]
+            },
+            'login_required': {
+                title: 'Login Required',
+                message: 'Please log in with your email to analyze documents.',
+                suggestions: [
+                    'Click the login button and enter your email',
+                    'Your analysis will be saved for future reference',
+                    'You can still use the chat feature without logging in'
+                ]
+            },
+            'analysis_failed': {
+                title: 'Analysis Failed',
+                message: 'We couldn\'t analyze your document. This might be due to unclear text or unsupported content.',
+                suggestions: [
+                    'Try uploading a clearer scan of the document',
+                    'Make sure the document contains readable text',
+                    'Contact support with the document type you\'re trying to analyze'
+                ]
+            }
         };
+        const errorStyles = document.createElement('style');
+        errorStyles.textContent = `
+            @keyframes slideInDown {
+                from { opacity: 0; transform: translateY(-30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes slideOutUp {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-30px); }
+            }
+            .enhanced-error-container .error-header {
+                display: flex; align-items: center; justify-content: space-between;
+                margin-bottom: 1rem; font-weight: bold; color: #dc2626;
+            }
+            .enhanced-error-container .error-icon {
+                background: #dc2626; color: white; width: 30px; height: 30px;
+                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            }
+            .enhanced-error-container .error-close {
+                background: none; border: none; font-size: 1.5rem; cursor: pointer;
+                color: #666; padding: 0; width: 30px; height: 30px;
+            }
+            .enhanced-error-container .error-actions {
+                display: flex; gap: 1rem; margin-top: 1rem;
+            }
+        `;
+        document.head.appendChild(errorStyles);
         // Initialize app
+        // Replace all your separate DOMContentLoaded listeners with this single one:
         document.addEventListener('DOMContentLoaded', function() {
-            setupEventListeners();
-            checkUserSession();
-            updateUserStatus();
-            checkServerStatus();
-            checkSpeechSynthesisSupport();
-            setupCharacterCounter();
-            function initializeNewFeatures() {
-                // Initialize speech recognition
+            console.log('🚀 Initializing MyVakeel application...');
+            
+            try {
+                console.log('🔍 Getting DOM elements...');
+                fileInput = document.getElementById('file-input');
+                fileUploadArea = document.getElementById('file-upload-area');
+                textInput = document.getElementById('text-input');
+                analyzeFileBtn = document.getElementById('analyze-file-btn');
+                analyzeTextBtn = document.getElementById('analyze-text-btn');
+                chatInput = document.getElementById('chat-input');
+                sendChatBtn = document.getElementById('send-chat-btn');
+                chatWindow = document.getElementById('chat-window');
+                resultsContainer = document.getElementById('results-container');
+                loginModal = document.getElementById('login-modal');
+                emailInput = document.getElementById('email-input');
+                loginBtn = document.getElementById('login-btn');
+                cancelLoginBtn = document.getElementById('cancel-login-btn');
+                voicePlayer = document.getElementById('voice-player');
+                floatingVoice = document.getElementById('floating-voice');
+                
+                // Debug: Check if critical elements exist
+                console.log('📋 Element check:');
+                console.log('sendChatBtn:', sendChatBtn ? '✅ Found' : '❌ Missing');
+                console.log('chatInput:', chatInput ? '✅ Found' : '❌ Missing');
+                console.log('chatWindow:', chatWindow ? '✅ Found' : '❌ Missing');
+                
+                if (!sendChatBtn || !chatInput || !chatWindow) {
+                    console.error('❌ Critical chat elements are missing! Check your HTML IDs.');
+                    return;
+                }
+
+                // 2. Check if we're on admin page first
+                const pathname = window.location.pathname || '';
+                if (pathname.includes('/admin') || pathname.endsWith('/admin.html')) {
+                    console.log('📋 Admin page detected');
+                    verifyAdminSession().then(valid => {
+                        if (!valid) {
+                            document.body.innerHTML = `
+                                <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#2d3748,#4a5568);">
+                                    <div style="background:white;padding:2.5rem;border-radius:14px;text-align:center;max-width:480px;">
+                                        <h2 style="color:#dc2626;margin-bottom:1rem;">🔒 Access Denied</h2>
+                                        <p style="color:#666;margin-bottom:1.5rem;">Please log in to access the admin panel.</p>
+                                        <a href="/" class="btn" style="text-decoration:none;color:white;">Go to App</a>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }).catch(err => {
+                        console.error('Admin session verify error:', err);
+                    });
+                    return;
+                }
+
+                // 2. Initialize core managers and monitoring
+                console.log('🌐 Setting up managers...');
+                const apiManager = new APIManager();
+                const languageManager = new LanguageManager();
+                new ConnectionMonitor();
+                
+                // 3. Set up event listeners (THIS IS CRITICAL FOR CHAT BUTTON)
+                console.log('🎯 Setting up event listeners...');
+                setupEventListeners();
+                
+                // 4. Initialize language features
+                console.log('🌍 Initializing language features...');
+                if (typeof languageManager !== 'undefined') {
+                    languageManager.updateAllLanguageSettings();
+                }
+                
+                // 5. Initialize speech features
+                console.log('🎤 Initializing speech features...');
                 initializeSpeechRecognition();
                 
-                // Load saved language preference
+                // 6. Load saved language preference
                 const savedLanguage = localStorage.getItem('preferred_language');
-                if (savedLanguage && SUPPORTED_LANGUAGES[savedLanguage]) {
+                if (savedLanguage && typeof ENHANCED_LANGUAGE_CONFIG !== 'undefined' && ENHANCED_LANGUAGE_CONFIG[savedLanguage]) {
                     currentLanguage = savedLanguage;
                     const languageSelect = document.getElementById('language-select');
                     if (languageSelect) {
                         languageSelect.value = savedLanguage;
-                        updateInterfaceLanguage(savedLanguage);
+                        if (typeof updateInterfaceLanguage === 'function') {
+                            updateInterfaceLanguage(savedLanguage);
+                        }
                     }
                 }
                 
-                console.log('✅ Multi-language features initialized');
-                console.log(`Current language: ${SUPPORTED_LANGUAGES[currentLanguage].name}`);
-                console.log(`Speech recognition supported: ${recognition !== null}`);
+                // 7. Initialize user session and UI
+                console.log('👤 Checking user session...');
+                checkUserSession();
+                updateUserStatus();
+                
+                // 8. Check server and speech synthesis
+                console.log('🔍 Checking system status...');
+                checkServerStatus();
+                checkSpeechSynthesisSupport();
+                
+                // 9. Set up character counter
+                console.log('📝 Setting up character counter...');
+                setupCharacterCounter();
+                
+                // 10. Mobile optimizations
+                console.log('📱 Setting up mobile optimizations...');
+                setupMobileOptimizations();
+                
+                // 11. Admin session check (for main page)
+                console.log('🔐 Checking admin session...');
+                checkAdminSession();
+                
+                console.log('✅ MyVakeel application initialized successfully!');
+        
+                // Make testChatButton available globally
+                window.testChatButton = testChatButton;
+                
+                // 12. Override display results for language detection
+                if (typeof displayEnhancedResults === 'function') {
+                    const originalDisplayResults = displayEnhancedResults;
+                    displayEnhancedResults = function(results) {
+                        const detectedLang = detectContentLanguage(results);
+                        if (detectedLang !== languageManager.currentLanguage && detectedLang !== 'en') {
+                            const config = ENHANCED_LANGUAGE_CONFIG[detectedLang];
+                            if (config) {
+                                showNotification(
+                                    `Content appears to be in ${config.nativeName}. Would you like to switch?`,
+                                    'info'
+                                );
+                            }
+                        }
+                        return originalDisplayResults(results);
+                    };
+                }
+                
+                console.log('✅ MyVakeel application initialized successfully!');
+                
+                // Debug: Check if chat elements exist
+                console.log('🔍 Chat elements check:');
+                const sendBtn = document.getElementById('send-chat-btn');
+                const chatInp = document.getElementById('chat-input');
+                const chatWin = document.getElementById('chat-window');
+                
+                console.log('Send button:', sendBtn ? '✅ Found' : '❌ Missing');
+                console.log('Chat input:', chatInp ? '✅ Found' : '❌ Missing');
+                console.log('Chat window:', chatWin ? '✅ Found' : '❌ Missing');
+                
+                if (!sendBtn || !chatInp || !chatWin) {
+                    console.error('❌ Critical chat elements are missing!');
+                }
+                
+            } catch (error) {
+                console.error('❌ Initialization failed:', error);
+                showNotification('Application failed to initialize. Please refresh the page.', 'error');
             }
         });
 
-        function setupEventListeners() {
-            // File upload events
-            fileUploadArea.addEventListener('click', () => fileInput.click());
-            fileUploadArea.addEventListener('dragover', handleDragOver);
-            fileUploadArea.addEventListener('dragleave', handleDragLeave);
-            fileUploadArea.addEventListener('drop', handleFileDrop);
-            fileInput.addEventListener('change', handleFileSelect);
-            analyzeFileBtn.addEventListener('click', analyzeFile);
+        languageManager.onLanguageChange((langCode, config) => {
+            // Update speech recognition immediately
+            if (recognition && recognition.lang !== config.code) {
+                recognition.lang = config.code;
+                
+                // Restart if currently listening
+                if (isListening) {
+                    stopVoiceInput();
+                    setTimeout(startVoiceInput, 300);
+                }
+            }
+            
+            // Update voice status text
+            const voiceStatus = document.getElementById('voice-status');
+            if (voiceStatus && voiceStatus.style.display !== 'none') {
+                document.getElementById('voice-text').textContent = config.ui.listening;
+            }
+        });
 
-            // Text analysis events
-            analyzeTextBtn.addEventListener('click', analyzeText);
-
-            // Chat events
-            sendChatBtn.addEventListener('click', sendChatMessage);
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendChatMessage();
+        async function registerUser(email) {
+            return await apiManager.makeRequest('/register', {
+                method: 'POST',
+                body: JSON.stringify({ email })
             });
+        }
 
-            // Login events
-            loginBtn.addEventListener('click', handleLogin);
-            cancelLoginBtn.addEventListener('click', closeLoginModal);
-            emailInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleLogin();
+        async function analyzeFileAPI(file, userEmail) {
+            const formData = new FormData();
+            formData.append('file', file);
+            if (userEmail) formData.append('user_email', userEmail);
+
+            return await apiManager.makeRequest('/analyze-file', {
+                method: 'POST',
+                // Do not set Content-Type here; APIManager will remove it if it's FormData.
+                headers: {
+                    'User-Email': userEmail || ''
+                },
+                body: formData
             });
+        }
 
-            // Tab switching
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+        async function analyzeTextAPI(text, userEmail = '') {
+            return await apiManager.makeRequest('/analyze-text', {
+                method: 'POST',
+                headers: {
+                    'User-Email': userEmail
+                },
+                body: JSON.stringify({ text })
             });
+        }
 
-            // Speech synthesis events
-            if (speechSynthesis) {
-                speechSynthesis.addEventListener('voiceschanged', updateVoiceOptions);
+        async function sendChatAPI(query, language = 'en') {
+            return await apiManager.makeRequest('/chat', {
+                method: 'POST',
+                body: JSON.stringify({ query, language })
+            });
+        }
+
+        async function checkHealthAPI() {
+            return await apiManager.makeRequest('/health');
+        }
+
+        async function getUserHistory(email) {
+            return await apiManager.makeRequest(`/user-history/${email}`);
+        }
+
+        // === UPDATED LANGUAGE CHANGE FUNCTION ===
+        function changeLanguage() {
+            const selectedLang = document.getElementById('language-select').value;
+            languageManager.changeLanguage(selectedLang);
+        }
+        function testChatButton() {
+            console.log('🧪 Testing chat button...');
+            console.log('Send button exists:', !!sendChatBtn);
+            console.log('Chat input exists:', !!chatInput);
+            console.log('Chat input value:', chatInput ? chatInput.value : 'N/A');
+            
+            if (sendChatBtn && chatInput && chatWindow) {
+                console.log('Chat input value before:', chatInput.value);
+                chatInput.value = 'Hello, this is a test message';
+                console.log('Chat input value after:', chatInput.value);
+                handleChatMessage();
+            } else {
+                console.error('❌ Missing required elements for chat');
+                console.log('Available elements:');
+                console.log('- sendChatBtn:', sendChatBtn);
+                console.log('- chatInput:', chatInput);  
+                console.log('- chatWindow:', chatWindow);
             }
         }
+        // === UPDATED VOICE LANGUAGE CHANGE ===
+        function changeVoiceLanguage() {
+            const voiceSelect = document.getElementById('voice-language');
+            if (!voiceSelect) return;
+            
+            const selectedVoice = voiceSelect.value;
+            
+            // Find matching language for UI
+            const matchingLang = Object.entries(ENHANCED_LANGUAGE_CONFIG).find(([code, config]) => 
+                config.voice === selectedVoice || selectedVoice.startsWith(code)
+            );
+            
+            if (matchingLang && matchingLang[0] !== languageManager.currentLanguage) {
+                // Sync UI language with voice
+                const languageSelect = document.getElementById('language-select');
+                if (languageSelect) {
+                    languageSelect.value = matchingLang[0];
+                    languageManager.changeLanguage(matchingLang[0]);
+                }
+            }
+            
+            // Restart current playback with new language if playing
+            if (isPlaying) {
+                stopAnalysis();
+                setTimeout(() => playSection(currentSection, selectedVoice), 100);
+            }
+        }
+
+        // === LANGUAGE DETECTION FROM ANALYSIS ===
+        function detectContentLanguage(analysisData) {
+            if (!analysisData) return 'en';
+            
+            const textContent = JSON.stringify(analysisData).toLowerCase();
+            const patterns = {
+                'hi': /[\u0900-\u097F]|hindi|हिंदी/,
+                'ta': /[\u0B80-\u0BFF]|tamil|தமிழ்/,
+                'te': /[\u0C00-\u0C7F]|telugu|తెలుగు/,
+                'bn': /[\u0980-\u09FF]|bengali|বাংলা/,
+                'mr': /[\u0900-\u097F]|marathi|मराठी/,
+                'gu': /[\u0A80-\u0AFF]|gujarati|ગુજરાતી/,
+                'kn': /[\u0C80-\u0CFF]|kannada|ಕನ್ನಡ/
+            };
+            
+            for (const [lang, pattern] of Object.entries(patterns)) {
+                if (pattern.test(textContent)) {
+                    return lang;
+                }
+            }
+            
+            return 'en';
+        }
+
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        function createSafeElement(tag, content, className = '') {
+            const element = document.createElement(tag);
+            element.textContent = content; // Use textContent instead of innerHTML
+            if (className) element.className = className;
+            return element;
+        }
+
+        function safeSetHTML(element, content) {
+            // Only allow basic markdown-like formatting
+            const safeContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // **bold**
+                .replace(/\*(.*?)\*/g, '<em>$1</em>') // *italic*
+                .replace(/`(.*?)`/g, '<code>$1</code>') // `code`
+                .replace(/\n/g, '<br>'); // newlines
+            
+            element.innerHTML = safeContent;
+        }
+
+        function setupEventListeners() {
+            // File upload events
+            console.log('🎯 Setting up all event listeners...');
+            try {
+                // File upload events
+                if (fileUploadArea && fileInput) {
+                    fileUploadArea.addEventListener('click', () => fileInput.click());
+                    fileUploadArea.addEventListener('dragover', handleDragOver);
+                    fileUploadArea.addEventListener('dragleave', handleDragLeave);
+                    fileUploadArea.addEventListener('drop', handleFileDrop);
+                    fileInput.addEventListener('change', handleFileSelect);
+                }
+                
+                if (analyzeFileBtn) {
+                    analyzeFileBtn.addEventListener('click', analyzeFile);
+                }
+
+                // Text analysis events
+                if (analyzeTextBtn) {
+                    analyzeTextBtn.addEventListener('click', analyzeText);
+                }
+
+                // Chat events - FIXED NAMING
+                if (sendChatBtn) {
+                    sendChatBtn.addEventListener('click', handleChatMessage);
+                    console.log('✅ Chat send button event listener added');
+                } else {
+                    console.error('❌ Send chat button not found!');
+                }
+                
+                if (chatInput) {
+                    chatInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault(); // Prevent form submission
+                            handleChatMessage();
+                        }
+                    });
+                    console.log('✅ Chat input enter key listener added');
+                } else {
+                    console.error('❌ Chat input not found!');
+                }
+
+                // Login events
+                if (loginBtn && cancelLoginBtn && emailInput) {
+                    loginBtn.addEventListener('click', handleLogin);
+                    cancelLoginBtn.addEventListener('click', closeLoginModal);
+                }
+
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+                });
+
+                // Speech synthesis events
+                /* if (speechSynthesis) {
+                    speechSynthesis.addEventListener('voiceschanged', updateVoiceOptions);
+                } */
+                
+                console.log('✅ All event listeners set up successfully');
+                
+            } catch (error) {
+                console.error('❌ Error setting up event listeners:', error);
+            }
+        }
+
 
         // Character counter for text input
         function setupCharacterCounter() {
@@ -531,8 +1268,7 @@
         // Server status checker
         async function checkServerStatus() {
             try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
+                const data = await checkHealthAPI();
                 
                 if (data.status === 'healthy') {
                     console.log('✅ Server is running properly');
@@ -543,7 +1279,15 @@
                 }
             } catch (error) {
                 console.error('❌ Server connection failed:', error);
-                showNotification('Server connection failed. Please start Flask app on http://localhost:5000', 'error');
+                
+                let message = 'Server connection failed.';
+                if (error instanceof APIError) {
+                    message += ` Status: ${error.status}`;
+                } else {
+                    message += ' Please start Flask app on the correct port.';
+                }
+                
+                showNotification(message, 'error');
                 addServerIndicator('offline');
             }
         }
@@ -666,12 +1410,12 @@
         async function handleLogin() {
             const email = emailInput.value.trim();
             if (!email) {
-                showNotification('Please enter your email address', 'error');
+                showEnhancedError('login_required', 'Please enter your email address');
                 return;
             }
 
             if (!isValidEmail(email)) {
-                showNotification('Please enter a valid email address', 'error');
+                showEnhancedError('login_required', 'Please enter a valid email address');
                 return;
             }
 
@@ -679,28 +1423,7 @@
             loginBtn.textContent = 'Logging in...';
 
             try {
-                let response;
-                try {
-                    response = await fetch('/api/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email })
-                    });
-                } catch (apiError) {
-                    console.log('API route failed, trying fallback...');
-                    response = await fetch('/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email })
-                    });
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Server returned non-JSON response. Make sure Flask app is running on the correct port.');
-                }
-
-                const data = await response.json();
+                const data = await registerUser(email);
                 
                 if (data.success) {
                     currentUser = { email: data.email };
@@ -713,26 +1436,26 @@
                         analyzeFile();
                     }
                 } else {
-                    showNotification(data.error || 'Login failed', 'error');
+                    showEnhancedError('login_required', data.error || 'Login failed');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                let errorMessage = 'Login failed. ';
                 
-                if (error.message.includes('non-JSON response')) {
-                    errorMessage += 'Please make sure the Flask server is running on http://localhost:5000';
-                } else if (error.message.includes('Failed to fetch')) {
-                    errorMessage += 'Cannot connect to server. Please check if Flask app is running.';
+                if (error instanceof APIError) {
+                    if (error.status >= 500) {
+                        showEnhancedError('server_error', error.message);
+                    } else {
+                        showEnhancedError('login_required', error.message);
+                    }
                 } else {
-                    errorMessage += 'Please try again.';
+                    showEnhancedError('network_error', error.message);
                 }
-                
-                showNotification(errorMessage, 'error');
             } finally {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
             }
         }
+
 
         function logout() {
             currentUser = null;
@@ -748,7 +1471,7 @@
         // Enhanced Analysis functions
         async function analyzeFile() {
             if (!currentUser) {
-                showLoginModal();
+                showEnhancedError('login_required');
                 return;
             }
 
@@ -758,53 +1481,50 @@
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', file);
+            // Check file size
+            if (file.size > 10 * 1024 * 1024) {
+                showEnhancedError('file_too_large', `File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+                return;
+            }
 
-            // Show progress
+            // Check file type
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'text/plain'];
+            if (!allowedTypes.includes(file.type)) {
+                showEnhancedError('invalid_file', `File type: ${file.type}`);
+                return;
+            }
+
             showUploadProgress();
             analyzeFileBtn.disabled = true;
             analyzeFileBtn.textContent = 'Analyzing...';
 
             try {
-                let response;
-                try {
-                    response = await fetch('/api/analyze-file', {
-                        method: 'POST',
-                        headers: { 'User-Email': currentUser.email },
-                        body: formData
-                    });
-                } catch (apiError) {
-                    response = await fetch('/analyze-file', {
-                        method: 'POST',
-                        headers: { 'User-Email': currentUser.email },
-                        body: formData
-                    });
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Server error: Make sure Flask app is running properly');
-                }
-
-                const data = await response.json();
+                const data = await analyzeFileAPI(file, currentUser.email);
                 
                 if (data.success) {
                     analysisResults = data.result;
                     displayEnhancedResults(data.result);
                     showNotification(`Document analyzed successfully! (${data.file_size})`, 'success');
                 } else {
-                    showAnalysisError(data);
+                    const errorType = detectErrorType(new Error(data.error));
+                    showEnhancedError(errorType, data.details);
                 }
             } catch (error) {
                 console.error('File analysis error:', error);
-                showAnalysisError({ 
-                    error: 'Analysis failed',
-                    details: error.message,
-                    suggestion: error.message.includes('Server error') ? 
-                        'Please check if Flask server is running on http://localhost:5000' :
-                        'Please try again or contact support'
-                });
+                
+                if (error instanceof APIError) {
+                    if (error.status === 413) {
+                        showEnhancedError('file_too_large', error.message);
+                    } else if (error.status === 415) {
+                        showEnhancedError('invalid_file', error.message);
+                    } else if (error.status >= 500) {
+                        showEnhancedError('server_error', error.message);
+                    } else {
+                        showEnhancedError('analysis_failed', error.message);
+                    }
+                } else {
+                    showEnhancedError('network_error', error.message);
+                }
             } finally {
                 hideUploadProgress();
                 analyzeFileBtn.disabled = false;
@@ -820,7 +1540,7 @@
             }
 
             if (text.length > 50000) {
-                showNotification(`Text too long (${text.length} chars). Maximum is 50,000 characters.`, 'error');
+                showEnhancedError('analysis_failed', `Text too long: ${text.length} characters (max: 50,000)`);
                 return;
             }
 
@@ -829,55 +1549,34 @@
             analyzeTextBtn.textContent = 'Analyzing...';
 
             try {
-                let response;
-                try {
-                    response = await fetch('/api/analyze-text', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'User-Email': currentUser ? currentUser.email : ''
-                        },
-                        body: JSON.stringify({ text })
-                    });
-                } catch (apiError) {
-                    response = await fetch('/analyze-text', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'User-Email': currentUser ? currentUser.email : ''
-                        },
-                        body: JSON.stringify({ text })
-                    });
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Server error: Make sure Flask app is running properly');
-                }
-
-                const data = await response.json();
+                const data = await analyzeTextAPI(text, currentUser ? currentUser.email : '');
                 
                 if (data.success) {
                     analysisResults = data.result;
                     displayEnhancedResults(data.result);
                     showNotification(`Text analyzed successfully! (${data.text_length} characters)`, 'success');
                 } else {
-                    showAnalysisError(data);
+                    const errorType = detectErrorType(new Error(data.error));
+                    showEnhancedError(errorType, data.details);
                 }
             } catch (error) {
                 console.error('Text analysis error:', error);
-                showAnalysisError({
-                    error: 'Analysis failed',
-                    details: error.message,
-                    suggestion: 'Please try again with simpler text'
-                });
+                
+                if (error instanceof APIError) {
+                    if (error.status >= 500) {
+                        showEnhancedError('server_error', error.message);
+                    } else {
+                        showEnhancedError('analysis_failed', error.message);
+                    }
+                } else {
+                    showEnhancedError('network_error', error.message);
+                }
             } finally {
                 showLoading('text-loading', false);
                 analyzeTextBtn.disabled = false;
                 analyzeTextBtn.textContent = 'Analyze Text';
             }
         }
-
         // Progress tracking functions
         function showUploadProgress() {
             const progressContainer = document.getElementById('upload-progress');
@@ -984,7 +1683,7 @@
         }
 
         // Enhanced Chat functions
-        async function sendChatMessage() {
+        async function handleChatMessage() {
             const query = chatInput.value.trim();
             if (!query) return;
 
@@ -995,36 +1694,9 @@
             sendChatBtn.disabled = true;
 
             try {
-                let response;
-                try {
-                    response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            query: query,
-                            language: currentLanguage 
-                        })
-                    });
-                } catch (apiError) {
-                    response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            query: query,
-                            language: currentLanguage 
-                        })
-                    });
-                }
-
+                const data = await sendChatAPI(query, languageManager.currentLanguage);
+                
                 thinkingMessage.remove();
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    addMessageToChat('❌ Server error: Please make sure Flask app is running', 'bot');
-                    return;
-                }
-
-                const data = await response.json();
                 
                 if (data.response) {
                     const botMessage = addMessageToChat(data.response, 'bot');
@@ -1046,10 +1718,14 @@
                 console.error('Chat error:', error);
                 
                 let errorMessage = '❌ ';
-                if (error.message.includes('Failed to fetch')) {
-                    errorMessage += 'Cannot connect to server. Please check if Flask app is running';
+                if (error instanceof APIError) {
+                    if (error.status >= 500) {
+                        errorMessage += 'Our chat service is temporarily unavailable. Please try again.';
+                    } else {
+                        errorMessage += 'Sorry, I encountered an error. Please try again.';
+                    }
                 } else {
-                    errorMessage += 'Sorry, I encountered an error. Please try again.';
+                    errorMessage += 'Cannot connect to chat service. Please check your internet connection.';
                 }
                 
                 addMessageToChat(errorMessage, 'bot');
@@ -1058,11 +1734,61 @@
             }
         }
                    
+        function setupMobileOptimizations() {
+            const voiceBtn = document.getElementById('voice-input-btn');
+            if (voiceBtn) {
+                // Add touch feedback
+                voiceBtn.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                voiceBtn.addEventListener('touchend', function() {
+                    this.style.transform = 'scale(1)';
+                });
+                
+                // Prevent double-tap zoom on voice button
+                let lastTouchEnd = 0;
+                voiceBtn.addEventListener('touchend', function(event) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+            }
+            
+            // Optimize chat input for mobile
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                // Prevent viewport zoom on input focus
+                chatInput.addEventListener('focus', function() {
+                    if (window.innerWidth < 768) {
+                        this.style.fontSize = '16px'; // Prevents zoom on iOS
+                    }
+                });
+                
+                chatInput.addEventListener('blur', function() {
+                    this.style.fontSize = '';
+                });
+            }
+        }
 
         function addMessageToChat(message, sender, isTemporary = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `chat-message ${sender}-message`;
-            messageDiv.innerHTML = `<p>${message}</p>`;
+            
+            // Create paragraph element safely
+            const paragraph = document.createElement('p');
+            
+            if (sender === 'bot' && message.includes('**')) {
+                // For bot messages, allow basic formatting
+                safeSetHTML(paragraph, message);
+            } else {
+                // For user messages, use plain text
+                paragraph.textContent = message;
+            }
+            
+            messageDiv.appendChild(paragraph);
             
             if (isTemporary) {
                 messageDiv.style.opacity = '0.7';
@@ -1781,55 +2507,93 @@
         }
 
         // === 3. VOICE INPUT FUNCTIONS (add after existing functions) ===
-        function initializeSpeechRecognition() {
+        // Replace your existing speech recognition functions with these enhanced versions
+
+        // === BROWSER COMPATIBILITY CHECK ===
+        function checkBrowserSupport() {
+            const support = {
+                speechRecognition: false,
+                speechSynthesis: false,
+                browser: 'unknown'
+            };
+            
+            // Detect browser
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.includes('chrome')) support.browser = 'Chrome';
+            else if (userAgent.includes('firefox')) support.browser = 'Firefox';
+            else if (userAgent.includes('safari')) support.browser = 'Safari';
+            else if (userAgent.includes('edge')) support.browser = 'Edge';
+            
+            // Check speech recognition support
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                support.speechRecognition = true;
+            }
+            
+            // Check speech synthesis support
+            if ('speechSynthesis' in window) {
+                support.speechSynthesis = true;
+            }
+            
+            return support;
+        }
+
+        // === ENHANCED SPEECH RECOGNITION INITIALIZATION ===
+        function initializeSpeechRecognition() {
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+                if (!SpeechRecognition) {
+                    console.warn('Speech recognition not supported in this browser');
+                    recognition = null;
+                    return;
+                }
+
                 recognition = new SpeechRecognition();
-                
-                recognition.continuous = false;
-                recognition.interimResults = true;
-                recognition.lang = SUPPORTED_LANGUAGES[currentLanguage].code;
-                
-                recognition.onstart = function() {
-                    isListening = true;
-                    const voiceBtn = document.getElementById('voice-input-btn');
-                    const voiceStatus = document.getElementById('voice-status');
-                    
-                    if (voiceBtn) voiceBtn.classList.add('listening');
-                    if (voiceStatus) voiceStatus.style.display = 'block';
-                    
-                    document.getElementById('voice-text').textContent = 'Listening... Speak now!';
+                recognition.lang = languageManager?.getCurrentConfig?.().code || 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                recognition.onstart = () => { isListening = true; /* update UI */ };
+                recognition.onend = () => { isListening = false; /* update UI */ };
+                recognition.onerror = (e) => { console.warn('Speech recognition error', e); };
+
+                recognition.onresult = (evt) => {
+                    const transcript = Array.from(evt.results).map(r => r[0].transcript).join(' ');
+                    document.getElementById('voice-text') && (document.getElementById('voice-text').textContent = transcript);
+                    // do something with transcript...
                 };
-                
-                recognition.onresult = function(event) {
-                    let transcript = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        transcript += event.results[i][0].transcript;
-                    }
-                    
-                    document.getElementById('voice-text').textContent = `You said: "${transcript}"`;
-                    
-                    if (event.results[event.results.length - 1].isFinal) {
-                        document.getElementById('chat-input').value = transcript;
-                        setTimeout(stopVoiceInput, 1000);
-                    }
-                };
-                
-                recognition.onerror = function(event) {
-                    console.error('Speech recognition error:', event.error);
-                    showNotification('Voice input failed. Please try again.', 'error');
-                    stopVoiceInput();
-                };
-                
-                recognition.onend = function() {
-                    stopVoiceInput();
-                };
-            } else {
-                console.warn('Speech recognition not supported in this browser');
+            } catch (error) {
+                console.error('Failed to initialize speech recognition:', error);
+                recognition = null;
             }
         }
 
+
+        // === SHOW VOICE NOT SUPPORTED MESSAGE ===
+        function showVoiceNotSupported() {
+            const voiceBtn = document.getElementById('voice-input-btn');
+            if (voiceBtn) {
+                voiceBtn.disabled = true;
+                voiceBtn.innerHTML = '🚫';
+                voiceBtn.title = 'Voice input not supported in this browser. Try Chrome or Edge.';
+                voiceBtn.style.opacity = '0.5';
+            }
+            
+            // Show one-time notification
+            if (!localStorage.getItem('voice_warning_shown')) {
+                showNotification('Voice input requires Chrome or Edge browser. You can still use text input!', 'warning');
+                localStorage.setItem('voice_warning_shown', 'true');
+            }
+        }
+
+        // === ENHANCED TOGGLE VOICE INPUT ===
         function toggleVoiceInput() {
+            const support = checkBrowserSupport();
+            
+            if (!support.speechRecognition) {
+                showNotification('Voice input requires Chrome or Edge browser', 'error');
+                return;
+            }
+            
             if (!isListening) {
                 startVoiceInput();
             } else {
@@ -1837,31 +2601,46 @@
             }
         }
 
+        // === UPDATED START VOICE INPUT ===
         function startVoiceInput() {
+            if (!recognition) {
+                initializeSpeechRecognition();
+            }
+            
             if (recognition) {
-                recognition.lang = SUPPORTED_LANGUAGES[currentLanguage].code;
                 try {
+                    recognition.lang = SUPPORTED_LANGUAGES[currentLanguage].code;
                     recognition.start();
                 } catch (error) {
                     console.error('Failed to start voice recognition:', error);
-                    showNotification('Voice input not available', 'error');
+                    showNotification('Voice input failed to start. Please try again.', 'error');
                 }
             } else {
-                showNotification('Voice input not supported in this browser', 'warning');
+                showNotification('Voice input not available in this browser', 'error');
             }
         }
 
+        // === UPDATED STOP VOICE INPUT ===
         function stopVoiceInput() {
             if (recognition && isListening) {
-                recognition.stop();
+                try {
+                    recognition.stop();
+                } catch (error) {
+                    console.error('Error stopping voice recognition:', error);
+                }
             }
             
             isListening = false;
             const voiceBtn = document.getElementById('voice-input-btn');
             const voiceStatus = document.getElementById('voice-status');
             
-            if (voiceBtn) voiceBtn.classList.remove('listening');
-            if (voiceStatus) voiceStatus.style.display = 'none';
+            if (voiceBtn) {
+                voiceBtn.classList.remove('listening');
+                voiceBtn.title = 'Voice Input';
+            }
+            if (voiceStatus) {
+                voiceStatus.style.display = 'none';
+            }
         }
 
         // === 4. ADMIN FUNCTIONS (add after existing functions) ===
@@ -1873,19 +2652,198 @@
             document.getElementById('admin-modal').style.display = 'none';
         }
 
-        function adminLogin() {
+        async function adminLogin() {
             const username = document.getElementById('admin-username').value;
             const password = document.getElementById('admin-password').value;
             
-            if (username === 'admin' && password === '123456') {
-                isAdminLoggedIn = true;
-                closeAdminModal();
-                window.open('/admin', '_blank');
-                showNotification('Admin access granted! 🔧', 'success');
-            } else {
-                showNotification('Invalid credentials! Use admin/123456', 'error');
+            if (!username || !password) {
+                showNotification('Please enter both username and password', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const loginBtn = document.querySelector('.admin-modal .btn');
+            const originalText = loginBtn.textContent;
+            loginBtn.textContent = 'Logging in...';
+            loginBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/admin-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    adminSessionToken = data.session_token;
+                    adminSessionExpiry = new Date(data.expires);
+                    
+                    // Store session (encrypted in real app)
+                    localStorage.setItem('admin_session', JSON.stringify({
+                        token: adminSessionToken,
+                        expires: adminSessionExpiry
+                    }));
+                    
+                    closeAdminModal();
+                    showNotification('Admin access granted! 🔧', 'success');
+                    
+                    // Open admin panel
+                    window.open('/admin', '_blank');
+                    
+                    // Clear form
+                    document.getElementById('admin-username').value = '';
+                    document.getElementById('admin-password').value = '';
+                    
+                } else {
+                    showNotification(data.error || 'Invalid credentials', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Admin login error:', error);
+                showNotification('Login failed. Please check server connection.', 'error');
+            } finally {
+                loginBtn.textContent = originalText;
+                loginBtn.disabled = false;
             }
         }
+
+        // === CHECK EXISTING ADMIN SESSION ===
+        function checkAdminSession() {
+            const storedSession = localStorage.getItem('admin_session');
+            if (storedSession) {
+                try {
+                    const session = JSON.parse(storedSession);
+                    const expiry = new Date(session.expires);
+                    
+                    if (expiry > new Date()) {
+                        adminSessionToken = session.token;
+                        adminSessionExpiry = expiry;
+                        return true;
+                    } else {
+                        localStorage.removeItem('admin_session');
+                    }
+                } catch (error) {
+                    localStorage.removeItem('admin_session');
+                }
+            }
+            return false;
+        }
+
+        // === VERIFY ADMIN SESSION WITH SERVER ===
+        async function verifyAdminSession() {
+            if (!adminSessionToken) return false;
+            
+            try {
+                const response = await fetch('/api/admin-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_token: adminSessionToken })
+                });
+                
+                const data = await response.json();
+                return data.valid;
+            } catch (error) {
+                console.error('Admin session verification failed:', error);
+                return false;
+            }
+        }
+
+        // === ADMIN LOGOUT ===
+        async function adminLogout() {
+            if (adminSessionToken) {
+                try {
+                    await fetch('/api/admin-logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_token: adminSessionToken })
+                    });
+                } catch (error) {
+                    console.error('Logout error:', error);
+                }
+            }
+            
+            adminSessionToken = null;
+            adminSessionExpiry = null;
+            localStorage.removeItem('admin_session');
+            showNotification('Logged out from admin panel', 'success');
+        }
+
+        // === PROTECTED ADMIN API CALLS ===
+        async function makeAdminRequest(url, options = {}) {
+            if (!adminSessionToken) {
+                throw new Error('Admin authentication required');
+            }
+            
+            // Verify session is still valid
+            if (adminSessionExpiry && new Date() > adminSessionExpiry) {
+                adminLogout();
+                throw new Error('Admin session expired');
+            }
+            
+            const headers = {
+                ...options.headers,
+                'Admin-Session-Token': adminSessionToken
+            };
+            
+            const response = await fetch(url, { ...options, headers });
+            
+            if (response.status === 401) {
+                adminLogout();
+                throw new Error('Admin session invalid');
+            }
+            
+            return response;
+        }
+        // === UPDATE EXISTING ADMIN PANEL FUNCTIONS (for admin.html) ===
+
+        // Update your admin panel's viewUsers function
+        async function viewUsers() {
+            try {
+                const response = await makeAdminRequest('/admin/users');
+                const data = await response.json();
+                
+                // ... rest of your existing viewUsers code stays the same ...
+                
+            } catch (error) {
+                if (error.message.includes('authentication') || error.message.includes('session')) {
+                    document.getElementById('database-content').innerHTML = `
+                        <div style="text-align: center; padding: 3rem; background: #fef2f2; border-radius: 15px; border: 2px solid #fecaca;">
+                            <h3 style="color: #dc2626;">🔒 Authentication Required</h3>
+                            <p style="color: #666; margin: 1rem 0;">Your admin session has expired. Please log in again.</p>
+                            <button class="btn" onclick="window.location.href='/'">Go to Login</button>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ Error loading users: ${error.message}</p>`;
+                }
+            }
+        }
+
+        // Update your admin panel's viewAnalyses function
+        async function viewAnalyses() {
+            try {
+                const response = await makeAdminRequest('/admin/analyses');
+                const data = await response.json();
+                
+                // ... rest of your existing viewAnalyses code stays the same ...
+                
+            } catch (error) {
+                if (error.message.includes('authentication') || error.message.includes('session')) {
+                    document.getElementById('database-content').innerHTML = `
+                        <div style="text-align: center; padding: 3rem; background: #fef2f2; border-radius: 15px; border: 2px solid #fecaca;">
+                            <h3 style="color: #dc2626;">🔒 Authentication Required</h3>
+                            <p style="color: #666; margin: 1rem 0;">Your admin session has expired. Please log in again.</p>
+                            <button class="btn" onclick="window.location.href='/'">Go to Login</button>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('database-content').innerHTML = `<p style="color: #f56565;">❌ Error loading analyses: ${error.message}</p>`;
+                }
+            }
+        }
+
 
         function togglePasswordVisibility() {
             const passwordField = document.getElementById('admin-password');
@@ -1899,7 +2857,160 @@
                 toggleBtn.textContent = '👁️';
             }
         }
+        // Enhanced error display function
+        function showEnhancedError(errorType, details = null) {
+            const error = ERROR_MESSAGES[errorType] || ERROR_MESSAGES['server_error'];
+            
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'enhanced-error-container';
+            errorContainer.innerHTML = `
+                <div class="error-header">
+                    <div class="error-icon">❌</div>
+                    <div class="error-title">${error.title}</div>
+                    <button class="error-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div class="error-message">
+                    ${error.message}
+                    ${details ? `<br><small style="opacity: 0.8;">Details: ${details}</small>` : ''}
+                </div>
+                <div class="error-suggestions">
+                    <h4>💡 What you can do:</h4>
+                    <ul>
+                        ${error.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="error-actions">
+                    <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove()">Dismiss</button>
+                    <button class="btn" onclick="contactSupport('${errorType}')">Get Help</button>
+                </div>
+            `;
+            
+            // Add enhanced error styles
+            errorContainer.style.cssText = `
+                background: linear-gradient(135deg, #fef2f2, #fee2e2);
+                border: 1px solid #fecaca;
+                border-radius: 15px;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                box-shadow: 0 4px 20px rgba(220, 38, 38, 0.1);
+                animation: slideInDown 0.4s ease;
+            `;
+            
+            // Insert after the relevant section
+            const targetElement = document.querySelector('.main-grid') || document.querySelector('.container');
+            targetElement.appendChild(errorContainer);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (errorContainer.parentNode) {
+                    errorContainer.style.animation = 'slideOutUp 0.4s ease';
+                    setTimeout(() => errorContainer.remove(), 400);
+                }
+            }, 10000);
+        }
 
+        // Contact support function
+        function contactSupport(errorType) {
+            const supportInfo = `
+            🛠️ MyVakeel Support Information
+            
+            Error Type: ${errorType}
+            Browser: ${navigator.userAgent}
+            Time: ${new Date().toISOString()}
+            
+            📧 Email: support@myvakeel.com
+            💬 Chat: Available on our website
+            📱 Phone: +91-XXXX-XXXX (Mon-Fri, 9AM-6PM)
+            
+            🔧 Quick Self-Help:
+            1. Try refreshing the page
+            2. Clear your browser cache
+            3. Try in Chrome or Edge browser
+            4. Check if your internet is stable
+            `;
+            
+            alert(supportInfo);
+        }
+
+        // === ENHANCED NETWORK ERROR DETECTION ===
+        function detectErrorType(error, response = null) {
+            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                return 'network_error';
+            }
+            
+            if (response) {
+                if (response.status >= 500) return 'server_error';
+                if (response.status === 413) return 'file_too_large';
+                if (response.status === 401) return 'login_required';
+                if (response.status === 415) return 'invalid_file';
+            }
+            
+            if (error.message.includes('File too large')) return 'file_too_large';
+            if (error.message.includes('login') || error.message.includes('authentication')) return 'login_required';
+            if (error.message.includes('file') || error.message.includes('format')) return 'invalid_file';
+            
+            return 'analysis_failed';
+        }
+
+        async function analyzeFileWithEnhancedErrors() {
+            if (!currentUser) {
+                showEnhancedError('login_required');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (!file) {
+                showNotification('Please select a file', 'error');
+                return;
+            }
+
+            // Check file size before upload
+            if (file.size > 10 * 1024 * 1024) {
+                showEnhancedError('file_too_large', `Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showUploadProgress();
+            analyzeFileBtn.disabled = true;
+            analyzeFileBtn.textContent = 'Analyzing...';
+
+            try {
+                const response = await fetch('/api/analyze-file', {
+                    method: 'POST',
+                    headers: { 'User-Email': currentUser.email },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorType = detectErrorType(null, response);
+                    const errorData = await response.json().catch(() => ({}));
+                    showEnhancedError(errorType, errorData.details);
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    analysisResults = data.result;
+                    displayEnhancedResults(data.result);
+                    showNotification(`Document analyzed successfully! (${data.file_size})`, 'success');
+                } else {
+                    const errorType = detectErrorType(new Error(data.error));
+                    showEnhancedError(errorType, data.details);
+                }
+            } catch (error) {
+                console.error('File analysis error:', error);
+                const errorType = detectErrorType(error);
+                showEnhancedError(errorType, error.message);
+            } finally {
+                hideUploadProgress();
+                analyzeFileBtn.disabled = false;
+                analyzeFileBtn.textContent = 'Analyze Document';
+            }
+        }
         // Initialize speech synthesis on page load
         if (speechSynthesis) {
             speechSynthesis.onvoiceschanged = updateVoiceOptions;
