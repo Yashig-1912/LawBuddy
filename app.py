@@ -37,12 +37,30 @@ app = Flask(__name__)
 CORS(app)
 
 # AI model configuration
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Global variables for Firebase
 db = None
 bucket = None
 
+def validate_critical_environment():
+    """Validate critical environment variables"""
+    errors = []
+    
+    # Check API Key
+    if not api_key:
+        errors.append("Missing API_KEY - Required for Google Gemini AI")
+    elif len(api_key) < 20:
+        errors.append("API_KEY appears to be invalid (too short)")
+    
+    # Check if model is accessible
+    try:
+        test_response = model.generate_content("Test")
+        logger.info("✅ Gemini AI connection successful")
+    except Exception as e:
+        errors.append(f"Cannot connect to Gemini AI: {str(e)}")
+    
+    return errors
 def validate_environment():
     """Comprehensive environment validation with helpful error messages"""
     errors = []
@@ -698,83 +716,122 @@ def analyze_uploaded_file():
         if file.mimetype not in allowed_types:
             return safe_json_response({
                 "error": "Unsupported file type",
-                "supported": ["PDF", "JPEG", "PNG", "TXT"]
+                "supported": ["PDF", "JPEG", "PNG", "TXT"],
+                "received": file.mimetype
             }, 400)
         
         # Read and analyze file
-        file_content = file.read()
+        try:
+            file_content = file.read()
+        except Exception as e:
+            logger.error(f"File read error: {e}")
+            return safe_json_response({"error": "Failed to read file content"}, 400)
+            
         if len(file_content) > 10 * 1024 * 1024:  # 10MB limit
             return safe_json_response({"error": "File too large (max 10MB)"}, 400)
         
         # Analyze with AI
-        analysis_result = analyze_document_with_ai(file_content, file.mimetype, file.filename)
+        try:
+            analysis_result = analyze_document_with_ai(file_content, file.mimetype, file.filename)
+        except Exception as e:
+            logger.error(f"AI analysis error: {e}")
+            return safe_json_response({
+                "error": "Analysis failed", 
+                "details": str(e),
+                "suggestion": "Try uploading a clearer scan or different format"
+            }, 500)
         
         if analysis_result.get('error'):
-            return safe_json_response({"error": "Analysis failed", "details": analysis_result['error']}, 500)
+            return safe_json_response({
+                "error": "Analysis failed", 
+                "details": analysis_result['error']
+            }, 500)
         
         # Save to database if available
         doc_id = None
         if db:
-            doc_id = save_analysis_to_db(user_email, file.filename, file.mimetype, analysis_result)
+            try:
+                doc_id = save_analysis_to_db(user_email, file.filename, file.mimetype, analysis_result)
+            except Exception as e:
+                logger.error(f"Database save error: {e}")
+                # Don't fail the request if DB save fails
+                pass
         
         return safe_json_response({
             "success": True,
             "result": analysis_result,
             "doc_id": doc_id,
+            "file_size": f"{len(file_content)/1024:.1f}KB",
             "message": "Analysis completed successfully"
         })
         
     except Exception as e:
         logger.error(f"File analysis error: {e}")
-        return safe_json_response({"error": "Internal server error", "details": str(e)}, 500)
+        return safe_json_response({
+            "error": "Internal server error", 
+            "details": str(e),
+            "suggestion": "Please try again or contact support"
+        }, 500)
         
 @app.route('/api/analyze-text', methods=['POST'])
 @app.route('/analyze-text', methods=['POST'])
 def analyze_text_input():
     """Analyze text input with enhanced parsing"""
     try:
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return safe_json_response({"error": "No JSON data received"}, 400)
+            
         text_content = data.get('text', '').strip()
         user_email = request.headers.get('User-Email')
         
         if not text_content:
-            return jsonify({"error": "No text provided"}), 400
+            return safe_json_response({"error": "No text provided"}, 400)
         
         if len(text_content) > 50000:
-            return jsonify({
+            return safe_json_response({
                 "error": "Text too long",
                 "limit": "50,000 characters maximum",
                 "current": len(text_content),
                 "suggestion": "Please split your text into smaller sections"
-            }), 400
+            }, 400)
         
         logger.info(f"Processing text analysis ({len(text_content)} chars) for user: {user_email or 'anonymous'}")
         
         # Analyze text with AI
-        analysis_result = analyze_text_with_ai(text_content)
+        try:
+            analysis_result = analyze_text_with_ai(text_content)
+        except Exception as e:
+            logger.error(f"AI text analysis error: {e}")
+            return safe_json_response({
+                "error": "Analysis failed",
+                "details": str(e),
+                "suggestion": "Try simplifying your text or breaking it into smaller sections"
+            }, 500)
         
         if analysis_result.get('error'):
-            return jsonify({
+            return safe_json_response({
                 "error": "Analysis failed",
                 "details": analysis_result['error'],
-                "suggestion": "Try simplifying your text or breaking it into smaller sections"
-            }), 500
+                "suggestion": "Try breaking the text into smaller sections"
+            }, 500)
         
         # Save to database if user is logged in
         doc_id = None
-        if user_email and firebase_available:
-            doc_id = save_analysis_to_db(
-                user_email,
-                "Text Analysis",
-                "text/plain",
-                analysis_result
-            )
+        if user_email and db:
+            try:
+                doc_id = save_analysis_to_db(
+                    user_email,
+                    "Text Analysis",
+                    "text/plain",
+                    analysis_result
+                )
+            except Exception as e:
+                logger.error(f"Database save error: {e}")
+                # Don't fail the request if DB save fails
+                pass
         
-        # Add visual data
-        visual_data = generate_visual_representations(analysis_result)
-        analysis_result.update(visual_data)
-        
-        return jsonify({
+        return safe_json_response({
             "success": True,
             "result": analysis_result,
             "doc_id": doc_id,
@@ -783,24 +840,24 @@ def analyze_text_input():
         
     except Exception as e:
         logger.error(f"Text analysis error: {e}")
-        return jsonify({
+        return safe_json_response({
             "error": "Analysis failed",
             "details": str(e),
             "suggestion": "Please try again with simpler text"
-        }), 500
+        }, 500)
 
 @app.route('/api/chat', methods=['POST'])
 @app.route('/chat', methods=['POST'])
 def chat():
     """Enhanced chatbot with better responses"""
     try:
-        data = request.json
+        data = request.get_json()
         if not data:
-            return jsonify({"error": "No data provided"}), 400
+            return safe_json_response({"error": "No JSON data received"}, 400)
         
         user_query = data.get('query', '').strip()
         if not user_query:
-            return jsonify({"error": "No question provided"}), 400
+            return safe_json_response({"error": "No question provided"}, 400)
         
         # Enhanced prompt for better responses
         prompt = f"""
@@ -816,7 +873,6 @@ def chat():
         Guidelines for your responses:
         - Use clear, conversational language (avoid legal jargon)
         - Provide practical examples when possible
-        - Include relevant emojis to make responses friendly
         - Keep responses under 250 words
         - Always include the disclaimer about not providing legal advice
         - If asked about specific legal situations, suggest consulting a lawyer
@@ -836,13 +892,13 @@ def chat():
                 
         except Exception as ai_error:
             logger.error(f"AI chat error: {ai_error}")
-            return jsonify({
+            return safe_json_response({
                 "error": "AI service temporarily unavailable",
                 "suggestion": "Please try again in a few moments",
                 "fallback_response": "I'm having trouble connecting to my AI service right now. Please try asking your question again, or feel free to upload a document for analysis instead."
-            }), 500
+            }, 500)
         
-        return jsonify({
+        return safe_json_response({
             "response": ai_response,
             "timestamp": datetime.now().isoformat(),
             "query_length": len(user_query)
@@ -850,15 +906,22 @@ def chat():
         
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        return jsonify({
+        return safe_json_response({
             "error": "Chat service failed",
             "details": str(e),
             "suggestion": "Please try again or refresh the page"
-        }), 500
+        }, 500)
 
 def analyze_document_with_ai(file_content, mime_type, filename):
     """Enhanced document analysis with structured prompts"""
     try:
+        # Check if API key is configured
+        if not api_key:
+            return {
+                "error": "AI service not configured - API_KEY missing",
+                "suggestion": "Please check your environment variables"
+            }
+            
         # Enhanced prompt for better structured output
         prompt = """
         You are an expert legal document analyzer. Analyze this document and provide comprehensive insights in a structured format.
@@ -914,10 +977,16 @@ def analyze_document_with_ai(file_content, mime_type, filename):
         Return only valid JSON with no additional text or formatting.
         """
         
-        prompt_parts = [prompt, {'mime_type': mime_type, 'data': file_content}]
-        
-        response = model.generate_content(prompt_parts)
-        ai_response_text = response.text.strip()
+        try:
+            prompt_parts = [prompt, {'mime_type': mime_type, 'data': file_content}]
+            response = model.generate_content(prompt_parts)
+            ai_response_text = response.text.strip()
+        except Exception as e:
+            logger.error(f"Gemini API error: {e}")
+            return {
+                "error": f"AI service error: {str(e)}",
+                "suggestion": "Please try again in a few moments"
+            }
         
         logger.info(f"AI response received for {filename} ({len(ai_response_text)} chars)")
         
@@ -937,6 +1006,13 @@ def analyze_document_with_ai(file_content, mime_type, filename):
 def analyze_text_with_ai(text_content):
     """Enhanced text analysis with better prompts"""
     try:
+        # Check if API key is configured
+        if not api_key:
+            return {
+                "error": "AI service not configured - API_KEY missing",
+                "suggestion": "Please check your environment variables"
+            }
+            
         prompt = f"""
         Analyze the following legal text and provide structured insights. Focus on making complex legal language accessible to everyday people.
         
@@ -983,8 +1059,15 @@ def analyze_text_with_ai(text_content):
         Return only valid JSON.
         """
         
-        response = model.generate_content(prompt)
-        ai_response_text = response.text.strip()
+        try:
+            response = model.generate_content(prompt)
+            ai_response_text = response.text.strip()
+        except Exception as e:
+            logger.error(f"Gemini API error: {e}")
+            return {
+                "error": f"AI service error: {str(e)}",
+                "suggestion": "Please try again in a few moments"
+            }
         
         logger.info(f"AI text analysis response received ({len(ai_response_text)} chars)")
         
@@ -999,7 +1082,6 @@ def analyze_text_with_ai(text_content):
             "error": f"Failed to analyze text: {str(e)}",
             "suggestion": "Try breaking the text into smaller sections"
         }
-
 def generate_visual_representations(analysis_data):
     """Generate enhanced visual data for frontend"""
     visual_data = {}
@@ -1672,9 +1754,48 @@ def internal_error(error):
         "suggestion": "Please try again or contact support"
     }), 500
 
+# 6. Add a simple test endpoint to verify your setup:
+@app.route('/api/test-simple', methods=['GET'])
+def test_simple():
+    """Simple test endpoint to verify basic functionality"""
+    try:
+        # Test AI connection
+        ai_test = "AI service unavailable"
+        if api_key:
+            try:
+                test_response = model.generate_content("Hello, respond with 'AI working'")
+                ai_test = "AI service working"
+            except Exception as e:
+                ai_test = f"AI error: {str(e)}"
+        
+        return safe_json_response({
+            "status": "Server running",
+            "ai_status": ai_test,
+            "firebase_status": "Connected" if db else "Not configured",
+            "timestamp": datetime.now().isoformat(),
+            "message": "Basic functionality test complete"
+        })
+        
+    except Exception as e:
+        logger.error(f"Simple test error: {e}")
+        return safe_json_response({
+            "status": "Error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }, 500)
 # --- RUN SERVER ---
 
 if __name__ == '__main__':
+    # Validate critical environment before starting
+    env_errors = validate_critical_environment()
+    if env_errors:
+        print("\n❌ CRITICAL ENVIRONMENT ERRORS:")
+        for error in env_errors:
+            print(f"  • {error}")
+        print("\n💡 Please fix these issues before starting the server")
+        print("📖 Check your .env file and ensure API_KEY is properly set")
+        sys.exit(1)
+    
     # Run startup checks
     env_valid, config, tests = startup_check()
     
@@ -1704,3 +1825,4 @@ if __name__ == '__main__':
         print("- Verify environment variables are set")
         print("- Check file permissions")
         sys.exit(1)
+
