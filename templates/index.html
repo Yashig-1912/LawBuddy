@@ -351,7 +351,7 @@
         let currentLanguage = 'en';
         let isListening = false;
         let recognition = null;
-        let apimanager=null;
+        let apiManager=null;
         let languageManager=null;
         let conversationHistory = {};
         let isAdminLoggedIn = false;
@@ -800,157 +800,34 @@
         // Initialize app
         // Replace all your separate DOMContentLoaded listeners with this single one:
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initializing MyVakeel application...');
+            console.log('🚀 Initializing MyVakeel...');
             
-            try {
-                console.log('🔍 Getting DOM elements...');
-                fileInput = document.getElementById('file-input');
-                fileUploadArea = document.getElementById('file-upload-area');
-                textInput = document.getElementById('text-input');
-                analyzeFileBtn = document.getElementById('analyze-file-btn');
-                analyzeTextBtn = document.getElementById('analyze-text-btn');
-                chatInput = document.getElementById('chat-input');
-                sendChatBtn = document.getElementById('send-chat-btn');
-                chatWindow = document.getElementById('chat-window');
-                resultsContainer = document.getElementById('results-container');
-                loginModal = document.getElementById('login-modal');
-                emailInput = document.getElementById('email-input');
-                loginBtn = document.getElementById('login-btn');
-                cancelLoginBtn = document.getElementById('cancel-login-btn');
-                voicePlayer = document.getElementById('voice-player');
-                floatingVoice = document.getElementById('floating-voice');
-                
-                // Debug: Check if critical elements exist
-                console.log('📋 Element check:');
-                console.log('sendChatBtn:', sendChatBtn ? '✅ Found' : '❌ Missing');
-                console.log('chatInput:', chatInput ? '✅ Found' : '❌ Missing');
-                console.log('chatWindow:', chatWindow ? '✅ Found' : '❌ Missing');
-                
-                if (!sendChatBtn || !chatInput || !chatWindow) {
-                    console.error('❌ Critical chat elements are missing! Check your HTML IDs.');
-                    return;
-                }
-
-                // 2. Check if we're on admin page first
-                const pathname = window.location.pathname || '';
-                if (pathname.includes('/admin') || pathname.endsWith('/admin.html')) {
-                    console.log('📋 Admin page detected');
-                    verifyAdminSession().then(valid => {
-                        if (!valid) {
-                            document.body.innerHTML = `
-                                <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#2d3748,#4a5568);">
-                                    <div style="background:white;padding:2.5rem;border-radius:14px;text-align:center;max-width:480px;">
-                                        <h2 style="color:#dc2626;margin-bottom:1rem;">🔒 Access Denied</h2>
-                                        <p style="color:#666;margin-bottom:1.5rem;">Please log in to access the admin panel.</p>
-                                        <a href="/" class="btn" style="text-decoration:none;color:white;">Go to App</a>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    }).catch(err => {
-                        console.error('Admin session verify error:', err);
-                    });
-                    return;
-                }
-
-                // 2. Initialize core managers and monitoring
-                console.log('🌐 Setting up managers...');
-                const apiManager = new APIManager();
-                const languageManager = new LanguageManager();
-                new ConnectionMonitor();
-                
-                // 3. Set up event listeners (THIS IS CRITICAL FOR CHAT BUTTON)
-                console.log('🎯 Setting up event listeners...');
-                setupEventListeners();
-                
-                // 4. Initialize language features
-                console.log('🌍 Initializing language features...');
-                if (typeof languageManager !== 'undefined') {
-                    languageManager.updateAllLanguageSettings();
-                }
-                
-                // 5. Initialize speech features
-                console.log('🎤 Initializing speech features...');
-                initializeSpeechRecognition();
-                
-                // 6. Load saved language preference
-                const savedLanguage = localStorage.getItem('preferred_language');
-                if (savedLanguage && typeof ENHANCED_LANGUAGE_CONFIG !== 'undefined' && ENHANCED_LANGUAGE_CONFIG[savedLanguage]) {
-                    currentLanguage = savedLanguage;
-                    const languageSelect = document.getElementById('language-select');
-                    if (languageSelect) {
-                        languageSelect.value = savedLanguage;
-                        if (typeof updateInterfaceLanguage === 'function') {
-                            updateInterfaceLanguage(savedLanguage);
-                        }
-                    }
-                }
-                
-                // 7. Initialize user session and UI
-                console.log('👤 Checking user session...');
-                checkUserSession();
-                updateUserStatus();
-                
-                // 8. Check server and speech synthesis
-                console.log('🔍 Checking system status...');
-                checkServerStatus();
-                checkSpeechSynthesisSupport();
-                
-                // 9. Set up character counter
-                console.log('📝 Setting up character counter...');
-                setupCharacterCounter();
-                
-                // 10. Mobile optimizations
-                console.log('📱 Setting up mobile optimizations...');
-                setupMobileOptimizations();
-                
-                // 11. Admin session check (for main page)
-                console.log('🔐 Checking admin session...');
-                checkAdminSession();
-                
-                console.log('✅ MyVakeel application initialized successfully!');
-        
-                // Make testChatButton available globally
-                window.testChatButton = testChatButton;
-                
-                // 12. Override display results for language detection
-                if (typeof displayEnhancedResults === 'function') {
-                    const originalDisplayResults = displayEnhancedResults;
-                    displayEnhancedResults = function(results) {
-                        const detectedLang = detectContentLanguage(results);
-                        if (detectedLang !== languageManager.currentLanguage && detectedLang !== 'en') {
-                            const config = ENHANCED_LANGUAGE_CONFIG[detectedLang];
-                            if (config) {
-                                showNotification(
-                                    `Content appears to be in ${config.nativeName}. Would you like to switch?`,
-                                    'info'
-                                );
-                            }
-                        }
-                        return originalDisplayResults(results);
-                    };
-                }
-                
-                console.log('✅ MyVakeel application initialized successfully!');
-                
-                // Debug: Check if chat elements exist
-                console.log('🔍 Chat elements check:');
-                const sendBtn = document.getElementById('send-chat-btn');
-                const chatInp = document.getElementById('chat-input');
-                const chatWin = document.getElementById('chat-window');
-                
-                console.log('Send button:', sendBtn ? '✅ Found' : '❌ Missing');
-                console.log('Chat input:', chatInp ? '✅ Found' : '❌ Missing');
-                console.log('Chat window:', chatWin ? '✅ Found' : '❌ Missing');
-                
-                if (!sendBtn || !chatInp || !chatWin) {
-                    console.error('❌ Critical chat elements are missing!');
-                }
-                
-            } catch (error) {
-                console.error('❌ Initialization failed:', error);
-                showNotification('Application failed to initialize. Please refresh the page.', 'error');
-            }
+            // Initialize DOM elements first
+            fileInput = document.getElementById('file-input');
+            fileUploadArea = document.getElementById('file-upload-area');
+            textInput = document.getElementById('text-input');
+            analyzeFileBtn = document.getElementById('analyze-file-btn');
+            analyzeTextBtn = document.getElementById('analyze-text-btn');
+            chatInput = document.getElementById('chat-input');
+            sendChatBtn = document.getElementById('send-chat-btn');
+            chatWindow = document.getElementById('chat-window');
+            resultsContainer = document.getElementById('results-container');
+            
+            // Initialize managers
+            apiManager = new APIManager();
+            languageManager = new LanguageManager();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initialize other features
+            initializeSpeechRecognition();
+            checkUserSession();
+            updateUserStatus();
+            checkServerStatus();
+            setupCharacterCounter();
+            
+            console.log('✅ MyVakeel initialized successfully!');
         });
 
         languageManager.onLanguageChange((langCode, config) => {
@@ -2443,22 +2320,22 @@
         }
 
         function changeLanguage() {
-        const selectedLang = document.getElementById('language-select').value;
-        currentLanguage = selectedLang;
-        
-        // Save to localStorage for persistence
-        localStorage.setItem('preferred_language', selectedLang);
-        
-        // Update interface language
-        updateInterfaceLanguage(selectedLang);
-        
-        // Update voice synthesis language
-        if (document.getElementById('voice-language')) {
-            document.getElementById('voice-language').value = SUPPORTED_LANGUAGES[selectedLang].voice;
+            const selectedLang = document.getElementById('language-select').value;
+            currentLanguage = selectedLang;
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('preferred_language', selectedLang);
+            
+            // Update interface language
+            updateInterfaceLanguage(selectedLang);
+            
+            // Update voice synthesis language
+            if (document.getElementById('voice-language')) {
+                document.getElementById('voice-language').value = SUPPORTED_LANGUAGES[selectedLang].voice;
+            }
+            
+            showNotification(`Language changed to ${SUPPORTED_LANGUAGES[selectedLang].name}`, 'success');
         }
-        
-        showNotification(`Language changed to ${SUPPORTED_LANGUAGES[selectedLang].name}`, 'success');
-    }
 
         function updateInterfaceLanguage(lang) {
             const translations = getUITranslations(lang);
@@ -2540,34 +2417,63 @@
         // === ENHANCED SPEECH RECOGNITION INITIALIZATION ===
         function initializeSpeechRecognition() {
             try {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (!SpeechRecognition) {
-                    console.warn('Speech recognition not supported in this browser');
-                    recognition = null;
+                    console.warn('Speech recognition not supported');
                     return;
                 }
 
                 recognition = new SpeechRecognition();
-                recognition.lang = languageManager?.getCurrentConfig?.().code || 'en-US';
-                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                recognition.interimResults = true;
                 recognition.maxAlternatives = 1;
 
-                recognition.onstart = () => { isListening = true; /* update UI */ };
-                recognition.onend = () => { isListening = false; /* update UI */ };
-                recognition.onerror = (e) => { console.warn('Speech recognition error', e); };
+                recognition.onresult = function(event) {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0].transcript)
+                        .join('');
+                    
+                    if (chatInput) {
+                        chatInput.value = transcript;
+                    }
+                };
 
-                recognition.onresult = (evt) => {
-                    const transcript = Array.from(evt.results).map(r => r[0].transcript).join(' ');
-                    document.getElementById('voice-text') && (document.getElementById('voice-text').textContent = transcript);
-                    // do something with transcript...
+                recognition.onstart = function() {
+                    isListening = true;
+                    updateVoiceUI();
+                };
+
+                recognition.onend = function() {
+                    isListening = false;
+                    updateVoiceUI();
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    isListening = false;
+                    updateVoiceUI();
                 };
             } catch (error) {
                 console.error('Failed to initialize speech recognition:', error);
-                recognition = null;
             }
         }
 
-
+        function updateVoiceUI() {
+            const voiceBtn = document.getElementById('voice-input-btn');
+            const voiceStatus = document.getElementById('voice-status');
+            
+            if (!voiceBtn || !voiceStatus) return;
+            
+            if (isListening) {
+                voiceBtn.classList.add('listening');
+                voiceBtn.innerHTML = '⏹️';
+                voiceStatus.style.display = 'block';
+            } else {
+                voiceBtn.classList.remove('listening');
+                voiceBtn.innerHTML = '🎤';
+                voiceStatus.style.display = 'none';
+            }
+        }
         // === SHOW VOICE NOT SUPPORTED MESSAGE ===
         function showVoiceNotSupported() {
             const voiceBtn = document.getElementById('voice-input-btn');

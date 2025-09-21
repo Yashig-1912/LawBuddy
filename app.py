@@ -684,79 +684,50 @@ def get_user_history(email):
 @app.route('/api/analyze-file', methods=['POST'])
 @app.route('/analyze-file', methods=['POST'])
 def analyze_uploaded_file():
-    """Analyze uploaded file with enhanced error handling"""
     try:
         user_email = request.headers.get('User-Email')
         if not user_email:
-            return jsonify({"error": "User authentication required for file analysis"}), 401
+            return safe_json_response({"error": "User authentication required"}, 401)
         
         file = request.files.get('file')
         if not file or file.filename == '':
-            return jsonify({"error": "No file selected"}), 400
+            return safe_json_response({"error": "No file selected"}, 400)
         
-        # Enhanced file validation
-        allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'text/plain']
+        # Basic file validation
+        allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'text/plain']
         if file.mimetype not in allowed_types:
-            return jsonify({
-                "error": f"Unsupported file type: {file.mimetype}",
-                "supported_types": ["PDF documents", "Images (JPEG, PNG)", "Text files"],
-                "suggestion": "Please convert your document to PDF or upload as an image"
-            }), 400
+            return safe_json_response({
+                "error": "Unsupported file type",
+                "supported": ["PDF", "JPEG", "PNG", "TXT"]
+            }, 400)
         
-        # Check file size
+        # Read and analyze file
         file_content = file.read()
-        file_size_mb = len(file_content) / (1024 * 1024)
-        if len(file_content) > 10 * 1024 * 1024:
-            return jsonify({
-                "error": f"File too large: {file_size_mb:.1f}MB",
-                "limit": "10MB maximum",
-                "suggestion": "Try compressing your PDF or splitting large documents"
-            }), 400
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB limit
+            return safe_json_response({"error": "File too large (max 10MB)"}, 400)
         
-        logger.info(f"Processing file: {file.filename} ({file_size_mb:.1f}MB) for user: {user_email}")
-        
-        # Upload file to storage first
-        file_info = upload_file_to_storage(file_content, file.filename, user_email)
-        
-        # Analyze document with enhanced AI
+        # Analyze with AI
         analysis_result = analyze_document_with_ai(file_content, file.mimetype, file.filename)
         
         if analysis_result.get('error'):
-            return jsonify({
-                "error": "Analysis failed",
-                "details": analysis_result['error'],
-                "suggestion": "Try uploading the file again or convert to a different format"
-            }), 500
+            return safe_json_response({"error": "Analysis failed", "details": analysis_result['error']}, 500)
         
-        # Save to database
-        doc_id = save_analysis_to_db(
-            user_email, 
-            file.filename, 
-            file.mimetype, 
-            analysis_result,
-            file_info
-        )
+        # Save to database if available
+        doc_id = None
+        if db:
+            doc_id = save_analysis_to_db(user_email, file.filename, file.mimetype, analysis_result)
         
-        # Add visual data for frontend
-        visual_data = generate_visual_representations(analysis_result)
-        analysis_result.update(visual_data)
-        
-        return jsonify({
+        return safe_json_response({
             "success": True,
             "result": analysis_result,
             "doc_id": doc_id,
-            "file_size": f"{file_size_mb:.1f}MB",
-            "message": "Document analyzed successfully!"
+            "message": "Analysis completed successfully"
         })
         
     except Exception as e:
         logger.error(f"File analysis error: {e}")
-        return jsonify({
-            "error": "Analysis failed",
-            "details": str(e),
-            "suggestion": "Please try again or contact support if the issue persists"
-        }), 500
-
+        return safe_json_response({"error": "Internal server error", "details": str(e)}, 500)
+        
 @app.route('/api/analyze-text', methods=['POST'])
 @app.route('/analyze-text', methods=['POST'])
 def analyze_text_input():
@@ -1677,7 +1648,13 @@ def admin_analyses_protected():
     """Get all analyses for admin (protected)"""
     return admin_analyses()  # Your existing function
 # --- ERROR HANDLERS ---
-
+# ADD this helper function after line 400:
+def safe_json_response(data, status=200):
+    """Safely return JSON response with error handling"""
+    try:
+        return jsonify(data), status
+    except Exception as e:
+        return jsonify({"error": "Response formatting error", "details": str(e)}), 500
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({
@@ -1704,7 +1681,7 @@ if __name__ == '__main__':
     # Get port and environment
     port = int(os.environ.get('PORT', 5000))
     is_production = os.environ.get('ENVIRONMENT') == 'production' or os.environ.get('RENDER') is not None
-    debug_mode = not is_production
+    debug_mode = False if os.environ.get('FLASK_ENV') == 'production' else True
     
     # Final startup message
     features_available = sum(config.values())
