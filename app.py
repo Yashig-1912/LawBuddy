@@ -1296,8 +1296,19 @@ if __name__ == '__main__':
         logger.error(f"Missing required environment variables: {missing_vars}")
         exit(1)
     
+    # Get port from environment (Render sets this automatically)
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Check if running in production (Render sets RENDER environment variable)
+    is_production = os.environ.get('RENDER') is not None
+    debug_mode = not is_production  # Debug only in development
+    
     logger.info("Starting MyVakeel Enhanced Platform v2.0...")
+    logger.info(f"Environment: {'Production' if is_production else 'Development'}")
+    logger.info(f"Port: {port}")
+    logger.info(f"Debug mode: {debug_mode}")
     logger.info(f"Firebase available: {firebase_available}")
     logger.info(f"Storage available: {bucket is not None}")
     
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    # Run the Flask app
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
