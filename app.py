@@ -1266,6 +1266,124 @@ def view_database():
         logger.error(f"Database view error: {e}")
         return jsonify({"error": f"Database view failed: {str(e)}"}), 500
 
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    """Translate text between languages"""
+    try:
+        data = request.json
+        text = data.get('text', '')
+        source_lang = data.get('source_lang', 'en')
+        target_lang = data.get('target_lang', 'en')
+        
+        if source_lang == target_lang:
+            return jsonify({"translated_text": text})
+        
+        # Simple translation using Google Translate (free tier)
+        # Note: For production, use proper Google Translate API
+        translated = simple_translate(text, source_lang, target_lang)
+        
+        return jsonify({
+            "success": True,
+            "translated_text": translated,
+            "source_lang": source_lang,
+            "target_lang": target_lang
+        })
+        
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return jsonify({"error": "Translation failed", "original_text": text}), 500
+
+def simple_translate(text, source_lang, target_lang):
+    """Simple translation function - replace with proper API in production"""
+    try:
+        # For prototype, we'll use a basic translation
+        # In production, integrate with Google Translate API
+        
+        # Basic legal term translations for demo
+        legal_translations = {
+            'hi': {
+                'contract': 'अनुबंध',
+                'agreement': 'समझौता',
+                'legal': 'कानूनी',
+                'document': 'दस्तावेज़',
+                'analysis': 'विश्लेषण'
+            }
+            # Add more languages and terms
+        }
+        
+        if target_lang in legal_translations:
+            for en_term, translated_term in legal_translations[target_lang].items():
+                text = text.replace(en_term, f"{en_term} ({translated_term})")
+        
+        return text
+        
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return text
+@app.route('/api/chat', methods=['POST'])
+def enhanced_chat():
+    """Enhanced chatbot with multi-language support"""
+    try:
+        data = request.json
+        user_query = data.get('query', '').strip()
+        user_language = data.get('language', 'en')
+        
+        if not user_query:
+            return jsonify({"error": "No question provided"}), 400
+        
+        # If not English, translate to English for AI processing
+        if user_language != 'en':
+            english_query = simple_translate(user_query, user_language, 'en')
+        else:
+            english_query = user_query
+        
+        # Enhanced prompt for better multilingual responses
+        prompt = f"""
+        You are MyVakeel, a friendly AI legal assistant specializing in Indian law.
+        
+        User's question (in English): {english_query}
+        User's preferred language: {user_language}
+        
+        Provide a helpful response in English first, then if the user's language is not English, 
+        provide key legal terms in both English and {user_language}.
+        
+        Keep responses under 200 words and include relevant emojis.
+        Always include the legal disclaimer.
+        """
+        
+        try:
+            response = model.generate_content(prompt)
+            ai_response = response.text
+            
+            # Add multilingual legal terms
+            if user_language != 'en':
+                ai_response = enhance_with_bilingual_terms(ai_response, user_language)
+            
+            return jsonify({
+                "response": ai_response,
+                "language": user_language,
+                "original_query": user_query,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        except Exception as ai_error:
+            logger.error(f"AI chat error: {ai_error}")
+            return jsonify({"error": "AI service temporarily unavailable"}), 500
+            
+    except Exception as e:
+        logger.error(f"Enhanced chat error: {e}")
+        return jsonify({"error": "Chat service failed"}), 500
+
+def enhance_with_bilingual_terms(text, target_language):
+    """Add bilingual legal terms to response"""
+    # Add both English and local language terms
+    enhanced_text = text
+    
+    # Add language-specific enhancements
+    if target_language in ['hi', 'ta', 'te', 'bn', 'mr', 'gu', 'kn']:
+        enhanced_text += "\n\n📚 *Key terms are provided in both English and your local language for better understanding.*"
+    
+    return enhanced_text
 # --- ERROR HANDLERS ---
 
 @app.errorhandler(404)

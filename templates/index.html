@@ -17,7 +17,27 @@
             <p>Your AI-powered legal document assistant with voice support</p>
             <div id="user-status"></div>
         </div>
-
+        <!-- Add after header, before main-grid -->
+        <div class="language-selector-container">
+            <div class="language-selector">
+                <label for="language-select">🌐 Language:</label>
+                <select id="language-select" class="language-dropdown" onchange="changeLanguage()">
+                    <option value="en">English</option>
+                    <option value="hi">हिंदी (Hindi)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="bn">বাংলা (Bengali)</option>
+                    <option value="mr">मराठी (Marathi)</option>
+                    <option value="gu">ગુજરાતી (Gujarati)</option>
+                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                </select>
+            </div>
+            
+            <!-- Admin Access Button -->
+            <button class="admin-access-btn" onclick="showAdminLogin()" title="Admin Access">
+                🔧 Admin
+            </button>
+        </div>
         <!-- Main Content Grid -->
         <div class="main-grid">
             <!-- File Upload Section -->
@@ -125,6 +145,19 @@
             <div class="input-group">
                 <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms, clauses, or analysis results..." maxlength="500">
                 <button class="btn" id="send-chat-btn">Send</button>
+            </div>
+            <div class="input-group voice-enabled">
+                <input type="text" class="form-input" id="chat-input" placeholder="Ask about legal terms...">
+                <button class="voice-input-btn" id="voice-input-btn" onclick="toggleVoiceInput()" title="Voice Input">
+                    🎤
+                </button>
+                <button class="btn" id="send-chat-btn">Send</button>
+            </div>
+
+            <!-- Voice Input Status -->
+            <div class="voice-status" id="voice-status" style="display: none;">
+                <div class="voice-indicator">🎤 Listening...</div>
+                <div class="voice-text" id="voice-text">Speak now...</div>
             </div>
         </div>
 
@@ -283,6 +316,24 @@
             </div>
         </div>
     </div>
+    <div class="admin-modal" id="admin-modal">
+        <div class="modal-content">
+            <h2>🔧 Admin Access</h2>
+            <div class="admin-form">
+                <div class="input-group">
+                    <input type="text" id="admin-username" value="admin" class="form-input">
+                </div>
+                <div class="input-group password-group">
+                    <input type="password" id="admin-password" value="123456" class="form-input">
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">👁️</button>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn" onclick="adminLogin()">Login</button>
+                    <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Voice Widget -->
     <button class="floating-voice-widget" id="floating-voice" onclick="toggleVoiceWidget()" title="Voice Assistant" style="display: none;">
@@ -300,6 +351,11 @@
         let isPlaying = false;
         let currentSection = 'all';
         let speechSynthesis = window.speechSynthesis;
+        let currentLanguage = 'en';
+        let isListening = false;
+        let recognition = null;
+        let conversationHistory = {};
+        let isAdminLoggedIn = false;
 
         // DOM elements
         const fileInput = document.getElementById('file-input');
@@ -317,7 +373,16 @@
         const cancelLoginBtn = document.getElementById('cancel-login-btn');
         const voicePlayer = document.getElementById('voice-player');
         const floatingVoice = document.getElementById('floating-voice');
-
+        const SUPPORTED_LANGUAGES = {
+            'en': { name: 'English', code: 'en-US', voice: 'en-US' },
+            'hi': { name: 'हिंदी', code: 'hi-IN', voice: 'hi-IN' },
+            'ta': { name: 'தமிழ்', code: 'ta-IN', voice: 'ta-IN' },
+            'te': { name: 'తెలుగు', code: 'te-IN', voice: 'te-IN' },
+            'bn': { name: 'বাংলা', code: 'bn-IN', voice: 'bn-IN' },
+            'mr': { name: 'मराठी', code: 'mr-IN', voice: 'mr-IN' },
+            'gu': { name: 'ગુજરાતી', code: 'gu-IN', voice: 'gu-IN' },
+            'kn': { name: 'ಕನ್ನಡ', code: 'kn-IN', voice: 'kn-IN' }
+        };
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
@@ -326,6 +391,25 @@
             checkServerStatus();
             checkSpeechSynthesisSupport();
             setupCharacterCounter();
+            function initializeNewFeatures() {
+                // Initialize speech recognition
+                initializeSpeechRecognition();
+                
+                // Load saved language preference
+                const savedLanguage = localStorage.getItem('preferred_language');
+                if (savedLanguage && SUPPORTED_LANGUAGES[savedLanguage]) {
+                    currentLanguage = savedLanguage;
+                    const languageSelect = document.getElementById('language-select');
+                    if (languageSelect) {
+                        languageSelect.value = savedLanguage;
+                        updateInterfaceLanguage(savedLanguage);
+                    }
+                }
+                
+                console.log('✅ Multi-language features initialized');
+                console.log(`Current language: ${SUPPORTED_LANGUAGES[currentLanguage].name}`);
+                console.log(`Speech recognition supported: ${recognition !== null}`);
+            }
         });
 
         function setupEventListeners() {
@@ -916,13 +1000,19 @@
                     response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query })
+                        body: JSON.stringify({ 
+                            query: query,
+                            language: currentLanguage 
+                        })
                     });
                 } catch (apiError) {
                     response = await fetch('/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ query })
+                        body: JSON.stringify({ 
+                            query: query,
+                            language: currentLanguage 
+                        })
                     });
                 }
 
@@ -930,7 +1020,7 @@
 
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
-                    addMessageToChat('❌ Server error: Please make sure Flask app is running on http://localhost:5000', 'bot');
+                    addMessageToChat('❌ Server error: Please make sure Flask app is running', 'bot');
                     return;
                 }
 
@@ -957,7 +1047,7 @@
                 
                 let errorMessage = '❌ ';
                 if (error.message.includes('Failed to fetch')) {
-                    errorMessage += 'Cannot connect to server. Please check if Flask app is running on http://localhost:5000';
+                    errorMessage += 'Cannot connect to server. Please check if Flask app is running';
                 } else {
                     errorMessage += 'Sorry, I encountered an error. Please try again.';
                 }
@@ -967,6 +1057,7 @@
                 sendChatBtn.disabled = false;
             }
         }
+                   
 
         function addMessageToChat(message, sender, isTemporary = false) {
             const messageDiv = document.createElement('div');
@@ -1625,22 +1716,194 @@
             }, 5000);
         }
 
+        function changeLanguage() {
+        const selectedLang = document.getElementById('language-select').value;
+        currentLanguage = selectedLang;
+        
+        // Save to localStorage for persistence
+        localStorage.setItem('preferred_language', selectedLang);
+        
+        // Update interface language
+        updateInterfaceLanguage(selectedLang);
+        
+        // Update voice synthesis language
+        if (document.getElementById('voice-language')) {
+            document.getElementById('voice-language').value = SUPPORTED_LANGUAGES[selectedLang].voice;
+        }
+        
+        showNotification(`Language changed to ${SUPPORTED_LANGUAGES[selectedLang].name}`, 'success');
+    }
+
+        function updateInterfaceLanguage(lang) {
+            const translations = getUITranslations(lang);
+            
+            // Update placeholders and labels
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                chatInput.placeholder = translations.chatPlaceholder;
+            }
+            
+            const analyzeTextBtn = document.getElementById('analyze-text-btn');
+            if (analyzeTextBtn) {
+                analyzeTextBtn.textContent = translations.analyzeText;
+            }
+            
+            const analyzeFileBtn = document.getElementById('analyze-file-btn');
+            if (analyzeFileBtn && !analyzeFileBtn.disabled) {
+                analyzeFileBtn.textContent = translations.analyzeDocument;
+            }
+        }
+
+        function getUITranslations(lang) {
+            const translations = {
+                'en': {
+                    chatPlaceholder: 'Ask about legal terms, clauses, or analysis results...',
+                    analyzeText: 'Analyze Text',
+                    analyzeDocument: 'Analyze Document'
+                },
+                'hi': {
+                    chatPlaceholder: 'कानूनी शब्दों, धाराओं या विश्लेषण के बारे में पूछें...',
+                    analyzeText: 'पाठ का विश्लेषण करें',
+                    analyzeDocument: 'दस्तावेज़ का विश्लेषण करें'
+                },
+                'ta': {
+                    chatPlaceholder: 'சட்ட விதிமுறைகள், பிரிவுகள் அல்லது பகுப்பாய்வு பற்றி கேளுங்கள்...',
+                    analyzeText: 'உரையை பகுப்பாய்வு செய்யுங்கள்',
+                    analyzeDocument: 'ஆவணத்தை பகுப்பாய்வு செய்யுங்கள்'
+                },
+                'te': {
+                    chatPlaceholder: 'చట్టపరమైన నిబంధనలు, నిబంధనలు లేదా విశ్లేషణ గురించి అడగండి...',
+                    analyzeText: 'వచనాన్ని విశ్లేషించండి',
+                    analyzeDocument: 'పత్రాన్ని విశ్లేషించండి'
+                }
+            };
+            return translations[lang] || translations['en'];
+        }
+
+        // === 3. VOICE INPUT FUNCTIONS (add after existing functions) ===
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = SUPPORTED_LANGUAGES[currentLanguage].code;
+                
+                recognition.onstart = function() {
+                    isListening = true;
+                    const voiceBtn = document.getElementById('voice-input-btn');
+                    const voiceStatus = document.getElementById('voice-status');
+                    
+                    if (voiceBtn) voiceBtn.classList.add('listening');
+                    if (voiceStatus) voiceStatus.style.display = 'block';
+                    
+                    document.getElementById('voice-text').textContent = 'Listening... Speak now!';
+                };
+                
+                recognition.onresult = function(event) {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    
+                    document.getElementById('voice-text').textContent = `You said: "${transcript}"`;
+                    
+                    if (event.results[event.results.length - 1].isFinal) {
+                        document.getElementById('chat-input').value = transcript;
+                        setTimeout(stopVoiceInput, 1000);
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    showNotification('Voice input failed. Please try again.', 'error');
+                    stopVoiceInput();
+                };
+                
+                recognition.onend = function() {
+                    stopVoiceInput();
+                };
+            } else {
+                console.warn('Speech recognition not supported in this browser');
+            }
+        }
+
+        function toggleVoiceInput() {
+            if (!isListening) {
+                startVoiceInput();
+            } else {
+                stopVoiceInput();
+            }
+        }
+
+        function startVoiceInput() {
+            if (recognition) {
+                recognition.lang = SUPPORTED_LANGUAGES[currentLanguage].code;
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Failed to start voice recognition:', error);
+                    showNotification('Voice input not available', 'error');
+                }
+            } else {
+                showNotification('Voice input not supported in this browser', 'warning');
+            }
+        }
+
+        function stopVoiceInput() {
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+            
+            isListening = false;
+            const voiceBtn = document.getElementById('voice-input-btn');
+            const voiceStatus = document.getElementById('voice-status');
+            
+            if (voiceBtn) voiceBtn.classList.remove('listening');
+            if (voiceStatus) voiceStatus.style.display = 'none';
+        }
+
+        // === 4. ADMIN FUNCTIONS (add after existing functions) ===
+        function showAdminLogin() {
+            document.getElementById('admin-modal').style.display = 'block';
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').style.display = 'none';
+        }
+
+        function adminLogin() {
+            const username = document.getElementById('admin-username').value;
+            const password = document.getElementById('admin-password').value;
+            
+            if (username === 'admin' && password === '123456') {
+                isAdminLoggedIn = true;
+                closeAdminModal();
+                window.open('/admin', '_blank');
+                showNotification('Admin access granted! 🔧', 'success');
+            } else {
+                showNotification('Invalid credentials! Use admin/123456', 'error');
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('admin-password');
+            const toggleBtn = document.querySelector('.password-toggle');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordField.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
         // Initialize speech synthesis on page load
         if (speechSynthesis) {
             speechSynthesis.onvoiceschanged = updateVoiceOptions;
         }
     </script>
 </body>
-</html>; color: #6b7280; margin-top: 0.5rem;">Main document insights</div>
-                        </div>
-                        
-                        <div style="background: linear-gradient(135deg, #ef444420, #ef444410); border: 2px solid #ef4444; padding: 1.5rem; border-radius: 12px; text-align: center;">
-                            <div style="font-size: 2.5rem; color: #ef4444; font-weight: bold;">${stats.riskCount}</div>
-                            <div style="color: #4a5568; font-weight: 600;">Risks Identified</div>
-                            <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem;">Potential concerns</div>
-                        </div>
-                        
-                        <div style="background: linear-gradient(135deg, #10b98120, #10b98110); border: 2px solid #10b981; padding: 1.5rem; border-radius: 12px; text-align: center;">
-                            <div style="font-size: 2.5rem; color: #10b981; font-weight: bold;">${stats.termCount}</div>
-                            <div style="color: #4a5568; font-weight: 600;">Key Terms</div>
-                            <div style="font-size: 0.8rem
+</html>
