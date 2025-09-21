@@ -4,7 +4,7 @@ import json
 def test_basic_functionality():
     base_url = "http://localhost:5000"
     
-    print("🧪 Testing MyVakeel Basic Functionality...")
+    print("🧪 Testing LawBuddy Basic Functionality...")
     
     # Test 1: Health check
     try:

@@ -133,7 +133,7 @@ def validate_environment():
     
     # Print results
     print("\n" + "="*60)
-    print("🔧 MyVakeel Environment Validation Report")
+    print("🔧 LawBuddy Environment Validation Report")
     print("="*60)
     print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
@@ -179,7 +179,7 @@ def validate_environment():
     return len(errors) == 0, config_status
 def startup_check():
     """Run comprehensive startup checks"""
-    print("🚀 Starting MyVakeel Enhanced Platform...")
+    print("🚀 Starting LawBuddy Enhanced Platform...")
     
     
     
@@ -190,7 +190,7 @@ def startup_check():
         print("\n💡 Need help setting up? Check these resources:")
         print("📖 README.md - Complete setup guide")
         print("⚙️  .env.example - Example configuration file")
-        print("🌐 https://github.com/your-repo/myvakeel - Documentation")
+        print("🌐 https://github.com/your-repo/LawBuddy - Documentation")
         print("\n⚠️  Continuing with limited functionality...")
     
     # Test critical components
@@ -861,7 +861,7 @@ def chat():
         
         # Enhanced prompt for better responses
         prompt = f"""
-        You are MyVakeel, a friendly and knowledgeable AI legal assistant. You specialize in making legal documents and concepts easy to understand.
+        You are LawBuddy, a friendly and knowledgeable AI legal assistant. You specialize in making legal documents and concepts easy to understand.
         
         Your expertise includes:
         - Explaining legal terms in simple, everyday language
@@ -1374,19 +1374,19 @@ def test_database():
     try:
         # Create enhanced test user
         test_user = {
-            'email': 'test@myvakeel.com',
+            'email': 'test@LawBuddy.com',
             'created_at': firestore.SERVER_TIMESTAMP,
             'last_login': firestore.SERVER_TIMESTAMP,
             'test_user': True,
             'plan': 'free'
         }
         
-        user_ref = db.collection('users').document('test@myvakeel.com')
+        user_ref = db.collection('users').document('test@LawBuddy.com')
         user_ref.set(test_user)
         
         # Create enhanced test analysis
         test_analysis = {
-            'user_email': 'test@myvakeel.com',
+            'user_email': 'test@LawBuddy.com',
             'file_name': 'sample_employment_contract.pdf',
             'file_type': 'application/pdf',
             'analysis_result': {
@@ -1557,7 +1557,7 @@ def enhanced_chat():
         
         # Enhanced prompt for better multilingual responses
         prompt = f"""
-        You are MyVakeel, a friendly AI legal assistant specializing in Indian law.
+        You are LawBuddy, a friendly AI legal assistant specializing in Indian law.
         
         User's question (in English): {english_query}
         User's preferred language: {user_language}

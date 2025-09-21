@@ -1,5 +1,5 @@
 // =========================================================================
-// MyVakeel - Complete JavaScript Application
+// LawBuddy - Complete JavaScript Application
 // This file handles all webapp functionality including login, admin, and analysis
 // =========================================================================
 
@@ -233,7 +233,7 @@ class LanguageManager {
     }
     
     initializeFromStorage() {
-        const saved = localStorage.getItem('myvakeel_language');
+        const saved = localStorage.getItem('LawBuddy_language');
         if (saved && ENHANCED_LANGUAGE_CONFIG[saved]) {
             this.currentLanguage = saved;
         }
@@ -247,7 +247,7 @@ class LanguageManager {
         }
         
         this.currentLanguage = langCode;
-        localStorage.setItem('myvakeel_language', langCode);
+        localStorage.setItem('LawBuddy_language', langCode);
         
         this.updateAllLanguageSettings();
         this.notifyCallbacks(langCode);
@@ -405,7 +405,7 @@ async function checkHealthAPI() {
 // INITIALIZATION FUNCTIONS
 // =========================
 function initializeApp() {
-    console.log('🚀 Initializing MyVakeel...');
+    console.log('🚀 Initializing LawBuddy...');
     
     // Initialize DOM elements first
     initializeDOMElements();
@@ -429,7 +429,7 @@ function initializeApp() {
     checkServerStatus();
     setupCharacterCounter();
     
-    console.log('✅ MyVakeel initialized successfully!');
+    console.log('✅ LawBuddy initialized successfully!');
 }
 
 function initializeDOMElements() {
@@ -699,7 +699,7 @@ async function handleChatMessage() {
     addMessageToChat(query, 'user');
     chatInput.value = '';
 
-    const thinkingMessage = addMessageToChat('🤔 MyVakeel is thinking...', 'bot', true);
+    const thinkingMessage = addMessageToChat('🤔 LawBuddy is thinking...', 'bot', true);
     sendChatBtn.disabled = true;
 
     try {
@@ -771,7 +771,7 @@ function addMessageToChat(message, sender, isTemporary = false) {
 // AUTHENTICATION FUNCTIONS
 // =========================
 function checkUserSession() {
-    const savedUser = localStorage.getItem('myvakeel_user');
+    const savedUser = localStorage.getItem('LawBuddy_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         updateUserStatus();
@@ -848,7 +848,7 @@ async function handleLogin() {
         
         if (data.success) {
             currentUser = { email: data.email };
-            localStorage.setItem('myvakeel_user', JSON.stringify(currentUser));
+            localStorage.setItem('LawBuddy_user', JSON.stringify(currentUser));
             
             updateUserStatus();
             closeLoginModal();
@@ -884,7 +884,7 @@ function closeLoginModal() {
 
 function logout() {
     currentUser = null;
-    localStorage.removeItem('myvakeel_user');
+    localStorage.removeItem('LawBuddy_user');
     updateUserStatus();
     showNotification('Logged out successfully', 'success');
 }
@@ -2086,13 +2086,13 @@ function showEnhancedError(errorType, details = null) {
 
 function contactSupport(errorType) {
     const supportInfo = `
-🛠️ MyVakeel Support Information
+🛠️ LawBuddy Support Information
 
 Error Type: ${errorType}
 Browser: ${navigator.userAgent}
 Time: ${new Date().toISOString()}
 
-📧 Email: support@myvakeel.com
+📧 Email: support@LawBuddy.com
 💬 Chat: Available on our website
 📱 Phone: +91-XXXX-XXXX (Mon-Fri, 9AM-6PM)
 
@@ -2182,7 +2182,7 @@ window.debugAnalysis = debugAnalysis;
 // INITIALIZATION
 // =========================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 DOM Content Loaded - Initializing MyVakeel...');
+    console.log('🚀 DOM Content Loaded - Initializing LawBuddy...');
     
     // Add error handling styles
     const errorStyles = document.createElement('style');
@@ -2244,7 +2244,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    console.log('✅ MyVakeel fully initialized and ready!');
+    console.log('✅ LawBuddy fully initialized and ready!');
 });
 
 // =========================
